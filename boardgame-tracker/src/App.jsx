@@ -270,86 +270,84 @@ export default function BoardGameTracker() {
               <Plus size={16} /> Registra Partita
             </button>
 
-            {/* Pulsante Menu a Tre Linee con animazione al click/hover */}
+            {/* Pulsante Menu a Tre Linee */}
             <button 
-              onClick={() => setMenuOpen(!menuOpen)}
+              onClick={() => setMenuOpen(true)}
               className="bg-slate-800 hover:bg-slate-750 text-white p-2.5 rounded-xl border border-slate-700/60 shadow-md active:scale-95 transition-all flex items-center justify-center group"
               aria-label="Menu"
             >
-              {menuOpen ? <X size={22} className="transform rotate-90 transition-transform duration-300" /> : <Menu size={22} className="group-hover:rotate-12 transition-transform duration-300" />}
+              <Menu size={22} className="group-hover:scale-110 transition-transform duration-200" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Menu a comparsa (Drawer) con transizione fluida */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end transition-opacity duration-300" onClick={() => setMenuOpen(false)}>
-          <div className="w-80 max-w-full bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">Menu di Navigazione</h3>
-              <button onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white p-1 hover:rotate-90 transition-transform duration-300">
-                <X size={20} />
-              </button>
-            </div>
+      {/* Menu a comparsa (Drawer) con transizione fluida e marcata */}
+      <div className={`fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex justify-end transition-opacity duration-300 ${menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setMenuOpen(false)}>
+        <div className={`w-80 max-w-full bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+            <h3 className="font-bold text-base text-white flex items-center gap-2">Menu di Navigazione</h3>
+            <button onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white p-1 hover:rotate-90 transition-transform duration-300">
+              <X size={20} />
+            </button>
+          </div>
 
-            <div className="flex flex-col gap-2 py-4 flex-1">
-              <button 
-                onClick={() => { setActiveTab('classifica'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'classifica' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
-              >
-                <div className="flex items-center gap-3"><Trophy size={18} /> Classifica</div>
-                <ChevronRight size={16} className="text-slate-500" />
-              </button>
-              
-              <button 
-                onClick={() => { setActiveTab('cronologia'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'cronologia' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
-              >
-                <div className="flex items-center gap-3"><Clock size={18} /> Cronologia</div>
-                <ChevronRight size={16} className="text-slate-500" />
-              </button>
+          <div className="flex flex-col gap-2.5 py-4 flex-1">
+            <button 
+              onClick={() => { setActiveTab('classifica'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'classifica' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+            >
+              <div className="flex items-center gap-3"><Trophy size={18} /> Classifica</div>
+              <ChevronRight size={16} className="text-slate-500" />
+            </button>
+            
+            <button 
+              onClick={() => { setActiveTab('cronologia'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'cronologia' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+            >
+              <div className="flex items-center gap-3"><Clock size={18} /> Cronologia</div>
+              <ChevronRight size={16} className="text-slate-500" />
+            </button>
 
-              <button 
-                onClick={() => { setActiveTab('giocatori'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giocatori' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
-              >
-                <div className="flex items-center gap-3"><Users size={18} /> Giocatori</div>
-                <ChevronRight size={16} className="text-slate-500" />
-              </button>
+            <button 
+              onClick={() => { setActiveTab('giocatori'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giocatori' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+            >
+              <div className="flex items-center gap-3"><Users size={18} /> Giocatori</div>
+              <ChevronRight size={16} className="text-slate-500" />
+            </button>
 
-              <button 
-                onClick={() => { setActiveTab('stagioni'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'stagioni' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
-              >
-                <div className="flex items-center gap-3"><Calendar size={18} /> Stagioni</div>
-                <ChevronRight size={16} className="text-slate-500" />
-              </button>
+            <button 
+              onClick={() => { setActiveTab('stagioni'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'stagioni' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+            >
+              <div className="flex items-center gap-3"><Calendar size={18} /> Stagioni</div>
+              <ChevronRight size={16} className="text-slate-500" />
+            </button>
 
-              <button 
-                onClick={() => { setActiveTab('giochi'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giochi' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
-              >
-                <div className="flex items-center gap-3"><Gamepad2 size={18} /> Giochi</div>
-                <ChevronRight size={16} className="text-slate-500" />
-              </button>
-            </div>
+            <button 
+              onClick={() => { setActiveTab('giochi'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giochi' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+            >
+              <div className="flex items-center gap-3"><Gamepad2 size={18} /> Giochi</div>
+              <ChevronRight size={16} className="text-slate-500" />
+            </button>
+          </div>
 
-            <div className="pt-4 border-t border-slate-800 sm:hidden">
-              <button 
-                onClick={() => {
-                  if (seasons.length > 0 && !newMatchSeason) setNewMatchSeason(seasons[0].name);
-                  setShowNewMatchModal(true);
-                  setMenuOpen(false);
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
-              >
-                <Plus size={18} /> Registra Partita
-              </button>
-            </div>
+          <div className="pt-4 border-t border-slate-800 sm:hidden">
+            <button 
+              onClick={() => {
+                if (seasons.length > 0 && !newMatchSeason) setNewMatchSeason(seasons[0].name);
+                setShowNewMatchModal(true);
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+            >
+              <Plus size={18} /> Registra Partita
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {dbError && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
@@ -360,7 +358,7 @@ export default function BoardGameTracker() {
         </div>
       )}
 
-      {/* Contenuto principale con effetto animato al cambio */}
+      {/* Contenuto principale */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 animate-in fade-in duration-300">
         {loading ? (
           <div className="text-center py-20 text-slate-500 animate-pulse font-medium text-sm">Sincronizzazione dati cloud...</div>
