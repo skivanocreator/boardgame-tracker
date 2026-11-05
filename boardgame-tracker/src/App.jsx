@@ -41,9 +41,11 @@ export default function BoardGameTracker() {
   const [newMatchNotes, setNewMatchNotes] = useState('');
   const [matchPlayers, setMatchPlayers] = useState([{ name: '', score: '' }]);
 
-  // Modale Nuovo Giocatore Fisso
+  // Modale Nuovo / Modifica Giocatore Fisso
   const [showNewPlayerModal, setShowNewPlayerModal] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerImage, setNewPlayerImage] = useState('');
+  const [editingPlayer, setEditingPlayer] = useState(null);
 
   // Modale Nuovo Gioco / Immagine
   const [showNewGameModal, setShowNewGameModal] = useState(false);
@@ -105,13 +107,25 @@ export default function BoardGameTracker() {
   const handleSavePlayer = async (e) => {
     e.preventDefault();
     if (!newPlayerName.trim()) return;
-    if (playersList.some(p => p.name.toLowerCase() === newPlayerName.trim().toLowerCase())) {
-      alert("Questo giocatore esiste già!");
-      return;
-    }
     try {
-      await addDoc(collection(db, 'players'), { name: newPlayerName.trim() });
+      if (editingPlayer) {
+        await updateDoc(doc(db, 'players', editingPlayer.id), { 
+          name: newPlayerName.trim(), 
+          image: newPlayerImage.trim() 
+        });
+      } else {
+        if (playersList.some(p => p.name.toLowerCase() === newPlayerName.trim().toLowerCase())) {
+          alert("Questo giocatore esiste già!");
+          return;
+        }
+        await addDoc(collection(db, 'players'), { 
+          name: newPlayerName.trim(), 
+          image: newPlayerImage.trim() 
+        });
+      }
       setNewPlayerName('');
+      setNewPlayerImage('');
+      setEditingPlayer(null);
       setShowNewPlayerModal(false);
     } catch (err) { console.error(err); }
   };
@@ -242,6 +256,12 @@ export default function BoardGameTracker() {
     return { played, wins, totalScore, winRate, favoriteGamesCount: gamesPlayedSet.size };
   };
 
+  // Trova l'immagine del giocatore dall'anagrafica
+  const getPlayerImage = (playerName) => {
+    const found = playersList.find(p => p.name.toLowerCase() === playerName.toLowerCase());
+    return found ? found.image : '';
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-12 overflow-x-hidden selection:bg-indigo-500 selection:text-white">
       {/* Header HUD Moderno con Menu a Tre Linee */}
@@ -282,7 +302,7 @@ export default function BoardGameTracker() {
         </div>
       </header>
 
-      {/* Menu a comparsa (Drawer) con transizione fluida e marcata */}
+      {/* Menu a comparsa (Drawer) */}
       <div className={`fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex justify-end transition-opacity duration-300 ${menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setMenuOpen(false)}>
         <div className={`w-80 max-w-full bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-center pb-4 border-b border-slate-800">
@@ -367,17 +387,35 @@ export default function BoardGameTracker() {
             {/* SEZIONE DETTAGLIO GIOCATORE SELEZIONATO */}
             {selectedPlayerDetail ? (
               <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                <button 
-                  onClick={() => setSelectedPlayerDetail(null)}
-                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
-                >
-                  <ArrowLeft size={16} /> Torna all'elenco giocatori
-                </button>
+                <div className="flex justify-between items-center">
+                  <button 
+                    onClick={() => setSelectedPlayerDetail(null)}
+                    className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
+                  >
+                    <ArrowLeft size={16} /> Torna all'elenco giocatori
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      setEditingPlayer(selectedPlayerDetail);
+                      setNewPlayerName(selectedPlayerDetail.name);
+                      setNewPlayerImage(selectedPlayerDetail.image || '');
+                      setShowNewPlayerModal(true);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 px-3 py-2 rounded-xl border border-slate-700 transition-all"
+                  >
+                    <Edit2 size={14} /> Modifica Profilo
+                  </button>
+                </div>
 
                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
-                  <div className="w-20 h-20 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-3xl shadow-lg shadow-indigo-600/30">
-                    {selectedPlayerDetail.name.charAt(0).toUpperCase()}
-                  </div>
+                  {selectedPlayerDetail.image ? (
+                    <img src={selectedPlayerDetail.image} alt={selectedPlayerDetail.name} className="w-20 h-20 rounded-2xl object-cover shadow-lg border border-slate-700" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-3xl shadow-lg shadow-indigo-600/30">
+                      {selectedPlayerDetail.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div className="text-center md:text-left flex-1">
                     <h2 className="text-2xl font-black text-white">{selectedPlayerDetail.name}</h2>
                     <p className="text-xs text-slate-400 mt-1">Profilo e statistiche globali di tutti i tempi</p>
@@ -455,15 +493,20 @@ export default function BoardGameTracker() {
                             <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
                               {leaderboard.map((item, idx) => {
                                 const winRate = item.played > 0 ? ((item.wins / item.played) * 100).toFixed(1) : 0;
+                                const imgUrl = getPlayerImage(item.name);
                                 return (
                                   <tr key={item.name} className="hover:bg-slate-850/50 transition-colors">
                                     <td className="py-3.5 px-5 font-black text-slate-300">
                                       {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
                                     </td>
                                     <td className="py-3.5 px-5 font-bold text-white flex items-center gap-2.5">
-                                      <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                                        {item.name.charAt(0).toUpperCase()}
-                                      </div>
+                                      {imgUrl ? (
+                                        <img src={imgUrl} alt={item.name} className="w-8 h-8 rounded-xl object-cover border border-slate-700" />
+                                      ) : (
+                                        <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                          {item.name.charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
                                       {item.name}
                                     </td>
                                     <td className="py-3.5 px-5 text-center text-slate-300 font-medium">{item.played}</td>
@@ -525,10 +568,15 @@ export default function BoardGameTracker() {
                     <div className="flex justify-between items-center">
                       <div>
                         <h2 className="text-lg font-bold text-white">Anagrafica Giocatori Fissi</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Clicca su un giocatore per aprire le sue informazioni complete</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Clicca su un giocatore per aprire le sue informazioni complete o modificarne la foto</p>
                       </div>
                       <button 
-                        onClick={() => setShowNewPlayerModal(true)}
+                        onClick={() => {
+                          setEditingPlayer(null);
+                          setNewPlayerName('');
+                          setNewPlayerImage('');
+                          setShowNewPlayerModal(true);
+                        }}
                         className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
                       >
                         <UserPlus size={15} /> Aggiungi Giocatore
@@ -550,9 +598,13 @@ export default function BoardGameTracker() {
                               className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-base group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                  {pl.name.charAt(0).toUpperCase()}
-                                </div>
+                                {pl.image ? (
+                                  <img src={pl.image} alt={pl.name} className="w-10 h-10 rounded-xl object-cover border border-slate-700 shadow-md" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-base group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                    {pl.name.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
                                 <div>
                                   <h3 className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors">{pl.name}</h3>
                                   <p className="text-[11px] text-slate-400 mt-0.5">{stats.played} partite • {stats.wins} vittorie</p>
@@ -767,12 +819,12 @@ export default function BoardGameTracker() {
         </div>
       )}
 
-      {/* MODALE NUOVO GIOCATORE FISSO */}
+      {/* MODALE NUOVO / MODIFICA GIOCATORE FISSO */}
       {showNewPlayerModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
             <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-              <h3 className="font-bold text-sm sm:text-base text-white">Aggiungi Giocatore Fisso</h3>
+              <h3 className="font-bold text-sm sm:text-base text-white">{editingPlayer ? 'Modifica Giocatore' : 'Aggiungi Giocatore'}</h3>
               <button onClick={() => setShowNewPlayerModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
             
@@ -785,6 +837,17 @@ export default function BoardGameTracker() {
                   placeholder="Es. Mario"
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">URL Immagine Profilo</label>
+                <input 
+                  type="url" 
+                  placeholder="https://esempio.com/foto.jpg"
+                  value={newPlayerImage}
+                  onChange={(e) => setNewPlayerImage(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
