@@ -674,4 +674,204 @@ export default function BoardGameTracker() {
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Gioco</label>
                 <input 
-                  type="text"
+                  type="text" 
+                  list="games-list" 
+                  required
+                  placeholder="Es. Catan, Ticket to Ride..." 
+                  value={newMatchGame}
+                  onChange={(e) => setNewMatchGame(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+                <datalist id="games-list">
+                  {games.map(g => <option key={g.id} value={g.name} />)}
+                </datalist>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={newMatchDate}
+                    onChange={(e) => setNewMatchDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Stagione</label>
+                  <select 
+                    value={newMatchSeason}
+                    onChange={(e) => setNewMatchSeason(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  >
+                    {seasons.map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Partecipanti e Punti (Vincitore automatico)</label>
+                  <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi riga</button>
+                </div>
+                <div className="space-y-2">
+                  {matchPlayers.map((p, index) => (
+                    <div key={index} className="flex items-center gap-2 animate-in fade-in duration-200">
+                      <select 
+                        required
+                        value={p.name}
+                        onChange={(e) => updatePlayerRow(index, 'name', e.target.value)}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="">Seleziona giocatore...</option>
+                        {playersList.map(pl => (
+                          <option key={pl.id} value={pl.name}>{pl.name}</option>
+                        ))}
+                      </select>
+                      <input 
+                        type="number" 
+                        placeholder="Punti"
+                        required
+                        value={p.score}
+                        onChange={(e) => updatePlayerRow(index, 'score', e.target.value)}
+                        className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                      {matchPlayers.length > 1 && (
+                        <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1.5 active:scale-95 transition-all">
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Note (Opzionale)</label>
+                <textarea 
+                  rows="2"
+                  value={newMatchNotes}
+                  onChange={(e) => setNewMatchNotes(e.target.value)}
+                  placeholder="Es. Partita decisa all'ultimo turno..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button type="button" onClick={() => setShowNewMatchModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Salva Partita</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE NUOVO GIOCATORE FISSO */}
+      {showNewPlayerModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+              <h3 className="font-bold text-sm sm:text-base text-white">Aggiungi Giocatore Fisso</h3>
+              <button onClick={() => setShowNewPlayerModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSavePlayer} className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Giocatore</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Es. Mario"
+                  value={newPlayerName}
+                  onChange={(e) => setNewPlayerName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button type="button" onClick={() => setShowNewPlayerModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Salva</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE GIOCO / IMMAGINE */}
+      {showNewGameModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+              <h3 className="font-bold text-sm sm:text-base text-white">{editingGame ? 'Modifica Gioco' : 'Aggiungi Gioco'}</h3>
+              <button onClick={() => setShowNewGameModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveGame} className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Gioco</label>
+                <input 
+                  type="text" 
+                  required
+                  disabled={!!editingGame}
+                  value={newGameName}
+                  onChange={(e) => setNewGameName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">URL Immagine Copertina</label>
+                <input 
+                  type="url" 
+                  placeholder="https://esempio.com/copertina.jpg"
+                  value={newGameImage}
+                  onChange={(e) => setNewGameImage(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button type="button" onClick={() => setShowNewGameModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Salva</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE STAGIONE (Crea o Modifica) */}
+      {showNewSeasonModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+              <h3 className="font-bold text-sm sm:text-base text-white">{editingSeason ? 'Modifica Stagione' : 'Nuova Stagione'}</h3>
+              <button onClick={() => setShowNewSeasonModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveSeason} className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Stagione</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Es. Lega Inverno 2026"
+                  value={newSeasonName}
+                  onChange={(e) => setNewSeasonName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button type="button" onClick={() => setShowNewSeasonModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Salva</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
