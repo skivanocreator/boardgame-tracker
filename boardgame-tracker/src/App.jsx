@@ -4,7 +4,7 @@ import {
   getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, onSnapshot 
 } from 'firebase/firestore';
 import { 
-  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, AlertCircle, UserPlus, Menu, X, ChevronRight, ArrowLeft 
+  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, AlertCircle, UserPlus, Menu, X, ChevronRight, ArrowLeft, Play, CheckCircle2 
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -25,6 +25,7 @@ export default function BoardGameTracker() {
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState(null);
 
   const [matches, setMatches] = useState([]);
+  const [ongoingMatches, setOngoingMatches] = useState([]);
   const [games, setGames] = useState([]);
   const [playersList, setPlayersList] = useState([]);
   const [seasons, setSeasons] = useState([]);
@@ -33,15 +34,19 @@ export default function BoardGameTracker() {
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
 
-  // Modale Nuova Partita
+  // Modale Avvia Nuova Partita
   const [showNewMatchModal, setShowNewMatchModal] = useState(false);
   const [newMatchGame, setNewMatchGame] = useState('');
   const [newMatchDate, setNewMatchDate] = useState(new Date().toISOString().split('T')[0]);
   const [newMatchSeason, setNewMatchSeason] = useState('');
   const [newMatchNotes, setNewMatchNotes] = useState('');
-  const [matchPlayers, setMatchPlayers] = useState([{ name: '', score: '' }]);
+  const [matchPlayers, setMatchPlayers] = useState([{ name: '', faction: '' }]);
 
-  // Modale Nuovo / Modifica Giocatore Fisso
+  // Modale Termina Partita in Corso
+  const [finishingMatch, setFinishingMatch] = useState(null);
+  const [finishScores, setFinishScores] = useState({});
+
+  // Modale Nuovo Giocatore Fisso
   const [showNewPlayerModal, setShowNewPlayerModal] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerImage, setNewPlayerImage] = useState('');
@@ -65,6 +70,10 @@ export default function BoardGameTracker() {
         setLoading(false);
       }, (err) => { console.error(err); setDbError(true); setLoading(false); });
 
+      const unsubOngoing = onSnapshot(collection(db, 'ongoingMatches'), (snapshot) => {
+        setOngoingMatches(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+
       const unsubGames = onSnapshot(collection(db, 'games'), (snapshot) => {
         setGames(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
@@ -79,6 +88,7 @@ export default function BoardGameTracker() {
 
       return () => {
         unsubMatches();
+        unsubOngoing();
         unsubGames();
         unsubPlayers();
         unsubSeasons();
@@ -91,7 +101,7 @@ export default function BoardGameTracker() {
   }, []);
 
   const addPlayerRow = () => {
-    setMatchPlayers([...matchPlayers, { name: '', score: '' }]);
+    setMatchPlayers([...matchPlayers, { name: '', faction: '' }]);
   };
 
   const updatePlayerRow = (index, field, value) => {
@@ -130,13 +140,40 @@ export default function BoardGameTracker() {
     } catch (err) { console.error(err); }
   };
 
-  const handleSaveMatch = async (e) => {
+  // Avvia Partita (Sposta in Partite in Corso)
+  const handleStartMatch = async (e) => {
     e.preventDefault();
     if (!newMatchGame || matchPlayers.length === 0) return;
 
-    const parsedPlayers = matchPlayers.map(p => ({
-      ...p,
-      score: Number(p.score) || 0
+    try {
+      await addDoc(collection(db, 'ongoingMatches'), {
+        game: newMatchGame,
+        date: newMatchDate,
+        season: newMatchSeason || (seasons[0]?.name || 'Generale'),
+        notes: newMatchNotes,
+        players: matchPlayers,
+        createdAt: new Date().toISOString()
+      });
+
+      setShowNewMatchModal(false);
+      setMatchPlayers([{ name: '', faction: '' }]);
+      setNewMatchNotes('');
+      setActiveTab('inCorso');
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante l'avvio della partita.");
+    }
+  };
+
+  // Termina Partita in Corso (Assegna punteggi e sposta in cronologia)
+  const handleFinishMatchSubmit = async (e) => {
+    e.preventDefault();
+    if (!finishingMatch) return;
+
+    const parsedPlayers = finishingMatch.players.map(p => ({
+      name: p.name,
+      faction: p.faction || '-',
+      score: Number(finishScores[p.name]) || 0
     }));
 
     const maxScore = Math.max(...parsedPlayers.map(p => p.score));
@@ -146,25 +183,31 @@ export default function BoardGameTracker() {
     }));
 
     try {
+      // Salva nella cronologia definitiva
       await addDoc(collection(db, 'matches'), {
-        game: newMatchGame,
-        date: newMatchDate,
-        season: newMatchSeason || (seasons[0]?.name || 'Generale'),
-        notes: newMatchNotes,
+        game: finishingMatch.game,
+        date: finishingMatch.date,
+        season: finishingMatch.season,
+        notes: finishingMatch.notes,
         players: finalPlayers,
         createdAt: new Date().toISOString()
       });
 
-      if (!games.some(g => g.name.toLowerCase() === newMatchGame.toLowerCase())) {
-        await addDoc(collection(db, 'games'), { name: newMatchGame, image: '' });
-      }
+      // Elimina dalle partite in corso
+      await deleteDoc(doc(db, 'ongoingMatches', finishingMatch.id));
 
-      setShowNewMatchModal(false);
-      setMatchPlayers([{ name: '', score: '' }]);
-      setNewMatchNotes('');
+      setFinishingMatch(null);
+      setFinishScores({});
+      setActiveTab('cronologia');
     } catch (err) {
       console.error(err);
-      alert("Errore durante il salvataggio.");
+      alert("Errore durante il salvataggio dei punteggi.");
+    }
+  };
+
+  const handleDeleteOngoing = async (id) => {
+    if (window.confirm("Vuoi eliminare questa partita in corso?")) {
+      await deleteDoc(doc(db, 'ongoingMatches', id));
     }
   };
 
@@ -256,7 +299,6 @@ export default function BoardGameTracker() {
     return { played, wins, totalScore, winRate, favoriteGamesCount: gamesPlayedSet.size };
   };
 
-  // Trova l'immagine del giocatore dall'anagrafica
   const getPlayerImage = (playerName) => {
     const found = playersList.find(p => p.name.toLowerCase() === playerName.toLowerCase());
     return found ? found.image : '';
@@ -287,7 +329,7 @@ export default function BoardGameTracker() {
               }}
               className="items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 active:scale-95 transition-all hidden sm:flex"
             >
-              <Plus size={16} /> Registra Partita
+              <Play size={16} /> Avvia Partita
             </button>
 
             {/* Pulsante Menu a Tre Linee */}
@@ -321,6 +363,17 @@ export default function BoardGameTracker() {
               <ChevronRight size={16} className="text-slate-500" />
             </button>
             
+            <button 
+              onClick={() => { setActiveTab('inCorso'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'inCorso' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+            >
+              <div className="flex items-center gap-3">
+                <Play size={18} className="text-emerald-400" /> Partite in corso 
+                {ongoingMatches.length > 0 && <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-bold">{ongoingMatches.length}</span>}
+              </div>
+              <ChevronRight size={16} className="text-slate-500" />
+            </button>
+
             <button 
               onClick={() => { setActiveTab('cronologia'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
               className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'cronologia' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
@@ -363,7 +416,7 @@ export default function BoardGameTracker() {
               }}
               className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
             >
-              <Plus size={18} /> Registra Partita
+              <Play size={18} /> Avvia Partita
             </button>
           </div>
         </div>
@@ -524,7 +577,67 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 2. CRONOLOGIA */}
+                {/* 2. PARTITE IN CORSO */}
+                {activeTab === 'inCorso' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Play size={20} className="text-emerald-400" /> Partite in corso
+                      </h2>
+                    </div>
+
+                    {ongoingMatches.length === 0 ? (
+                      <div className="bg-slate-900 border border-slate-800 p-12 text-center rounded-2xl text-slate-500 text-sm">
+                        Nessuna partita in corso. Clicca su "Avvia Partita" per iniziarne una!
+                      </div>
+                    ) : (
+                      ongoingMatches.map(m => (
+                        <div key={m.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <h3 className="font-bold text-base text-white">{m.game}</h3>
+                              <span className="bg-emerald-500/10 text-emerald-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">In corso</span>
+                              <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                              <Calendar size={12} /> {m.date}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {m.players?.map((p, i) => (
+                                <span key={i} className="text-xs px-3 py-1.5 rounded-xl font-medium bg-slate-950 text-slate-300 border border-slate-800 flex items-center gap-1.5">
+                                  👤 {p.name} {p.faction && <span className="text-indigo-400 font-bold">({p.faction})</span>}
+                                </span>
+                              ))}
+                            </div>
+                            {m.notes && <p className="text-xs text-slate-400 mt-2 italic">Note: "{m.notes}"</p>}
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end md:self-center">
+                            <button 
+                              onClick={() => {
+                                setFinishingMatch(m);
+                                const initialScores = {};
+                                m.players.forEach(p => { initialScores[p.name] = ''; });
+                                setFinishScores(initialScores);
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition-all"
+                            >
+                              <CheckCircle2 size={16} /> Termina Partita
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteOngoing(m.id)}
+                              className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2.5 rounded-xl transition-all border border-red-500/20"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* 3. CRONOLOGIA */}
                 {activeTab === 'cronologia' && (
                   <div className="space-y-3.5">
                     <h2 className="text-lg font-bold text-white mb-2">Cronologia Tutte le Partite</h2>
@@ -544,7 +657,7 @@ export default function BoardGameTracker() {
                             <div className="flex flex-wrap gap-1.5 mt-2.5">
                               {m.players?.map((p, i) => (
                                 <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
-                                  {p.isWinner && '👑'} {p.name}: <strong>{p.score}</strong> pt
+                                  {p.isWinner && '👑'} {p.name} {p.faction && <span className="text-indigo-300">({p.faction})</span>}: <strong>{p.score}</strong> pt
                                 </span>
                               ))}
                             </div>
@@ -562,7 +675,7 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 3. GIOCATORI */}
+                {/* 4. GIOCATORI */}
                 {activeTab === 'giocatori' && (
                   <div className="space-y-5">
                     <div className="flex justify-between items-center">
@@ -619,7 +732,7 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 4. STAGIONI */}
+                {/* 5. STAGIONI */}
                 {activeTab === 'stagioni' && (
                   <div className="space-y-5">
                     <div className="flex justify-between items-center">
@@ -662,7 +775,7 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 5. GIOCHI */}
+                {/* 6. GIOCHI */}
                 {activeTab === 'giochi' && (
                   <div className="space-y-5">
                     <div className="flex justify-between items-center">
@@ -711,30 +824,29 @@ export default function BoardGameTracker() {
         )}
       </main>
 
-      {/* MODALE REGISTRA PARTITA */}
+      {/* MODALE AVVIA PARTITA */}
       {showNewMatchModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] transform transition-all">
             <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-              <h3 className="font-bold text-sm sm:text-base text-white">Registra Nuova Partita</h3>
+              <h3 className="font-bold text-sm sm:text-base text-white">Avvia Nuova Partita</h3>
               <button onClick={() => setShowNewMatchModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
             
-            <form onSubmit={handleSaveMatch} className="p-5 overflow-y-auto space-y-3.5 flex-1">
+            <form onSubmit={handleStartMatch} className="p-5 overflow-y-auto space-y-3.5 flex-1">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Gioco</label>
-                <input 
-                  type="text" 
-                  list="games-list" 
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Seleziona Gioco</label>
+                <select 
                   required
-                  placeholder="Es. Catan, Ticket to Ride..." 
                   value={newMatchGame}
                   onChange={(e) => setNewMatchGame(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-                <datalist id="games-list">
-                  {games.map(g => <option key={g.id} value={g.name} />)}
-                </datalist>
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Seleziona dalla libreria...</option>
+                  {games.map(g => (
+                    <option key={g.id} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -745,7 +857,7 @@ export default function BoardGameTracker() {
                     required
                     value={newMatchDate}
                     onChange={(e) => setNewMatchDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
@@ -753,7 +865,7 @@ export default function BoardGameTracker() {
                   <select 
                     value={newMatchSeason}
                     onChange={(e) => setNewMatchSeason(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                   >
                     {seasons.map(s => (
                       <option key={s.id} value={s.name}>{s.name}</option>
@@ -764,8 +876,8 @@ export default function BoardGameTracker() {
 
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Partecipanti e Punti (Vincitore automatico)</label>
-                  <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi riga</button>
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Partecipanti e Frazioni/Razze</label>
+                  <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi giocatore</button>
                 </div>
                 <div className="space-y-2">
                   {matchPlayers.map((p, index) => (
@@ -782,12 +894,11 @@ export default function BoardGameTracker() {
                         ))}
                       </select>
                       <input 
-                        type="number" 
-                        placeholder="Punti"
-                        required
-                        value={p.score}
-                        onChange={(e) => updatePlayerRow(index, 'score', e.target.value)}
-                        className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                        type="text" 
+                        placeholder="Fazione / Razza"
+                        value={p.faction}
+                        onChange={(e) => updatePlayerRow(index, 'faction', e.target.value)}
+                        className="w-32 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                       />
                       {matchPlayers.length > 1 && (
                         <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1.5 active:scale-95 transition-all">
@@ -805,14 +916,57 @@ export default function BoardGameTracker() {
                   rows="2"
                   value={newMatchNotes}
                   onChange={(e) => setNewMatchNotes(e.target.value)}
-                  placeholder="Es. Partita decisa all'ultimo turno..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="Es. Tavolo da 4 giocatori esperti..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                 ></textarea>
               </div>
 
               <div className="pt-2 flex justify-end gap-2.5">
                 <button type="button" onClick={() => setShowNewMatchModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Salva Partita</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">Avvia Partita</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE TERMINA PARTITA IN CORSO */}
+      {finishingMatch && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+              <h3 className="font-bold text-sm sm:text-base text-white">Termina: {finishingMatch.game}</h3>
+              <button onClick={() => setFinishingMatch(null)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form onSubmit={handleFinishMatchSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
+              <p className="text-xs text-slate-400">Inserisci i punteggi finali per ciascun partecipante. Il vincitore verrà calcolato automaticamente.</p>
+              
+              <div className="space-y-3">
+                {finishingMatch.players.map((p, idx) => (
+                  <div key={idx} className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-white text-sm">{p.name}</p>
+                      {p.faction && <p className="text-xs text-indigo-400">Fazione: {p.faction}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        required
+                        placeholder="Punti"
+                        value={finishScores[p.name] !== undefined ? finishScores[p.name] : ''}
+                        onChange={(e) => setFinishScores({ ...finishScores, [p.name]: e.target.value })}
+                        className="w-24 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-bold text-center focus:outline-none focus:border-indigo-500"
+                      />
+                      <span className="text-xs text-slate-400">pt</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button type="button" onClick={() => setFinishingMatch(null)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Registra Punteggi</button>
               </div>
             </form>
           </div>
