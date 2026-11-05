@@ -347,6 +347,40 @@ export default function BoardGameTracker() {
     return { played, wins, totalScore, winRate, favoriteGamesCount: gamesPlayedSet.size };
   };
 
+  const getGameStats = (gameName) => {
+    const gameMatches = matches.filter(m => m.game.toLowerCase() === gameName.toLowerCase());
+    const totalPlayed = gameMatches.length;
+    
+    let winCounts = {};
+    let totalScoreSum = 0;
+    let scoreCount = 0;
+
+    gameMatches.forEach(m => {
+      m.players?.forEach(p => {
+        if (p.score !== undefined) {
+          totalScoreSum += Number(p.score) || 0;
+          scoreCount += 1;
+        }
+        if (p.isWinner) {
+          winCounts[p.name] = (winCounts[p.name] || 0) + 1;
+        }
+      });
+    });
+
+    let bestPlayer = '-';
+    let maxWins = -1;
+    Object.entries(winCounts).forEach(([name, wins]) => {
+      if (wins > maxWins) {
+        maxWins = wins;
+        bestPlayer = `${name} (${wins} vittorie)`;
+      }
+    });
+
+    const avgScore = scoreCount > 0 ? (totalScoreSum / scoreCount).toFixed(1) : 0;
+
+    return { totalPlayed, bestPlayer, avgScore };
+  };
+
   const getPlayerImage = (playerName) => {
     const found = playersList.find(p => p.name.toLowerCase() === playerName.toLowerCase());
     return found ? found.image : '';
@@ -628,13 +662,29 @@ export default function BoardGameTracker() {
 
           ) : selectedGameDetail ? (
             <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-              <button 
-                onClick={() => setSelectedGameDetail(null)}
-                className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
-              >
-                <ArrowLeft size={16} /> Torna alla libreria giochi
-              </button>
+              <div className="flex justify-between items-center">
+                <button 
+                  onClick={() => setSelectedGameDetail(null)}
+                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
+                >
+                  <ArrowLeft size={16} /> Torna alla libreria giochi
+                </button>
 
+                <button 
+                  onClick={() => { 
+                    setEditingGame(selectedGameDetail); 
+                    setNewGameName(selectedGameDetail.name); 
+                    setNewGameImage(selectedGameDetail.image || ''); 
+                    setGameFactionsList(selectedGameDetail.factions && selectedGameDetail.factions.length > 0 ? selectedGameDetail.factions : ['']);
+                    setShowNewGameModal(true); 
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 px-3 py-2 rounded-xl border border-slate-700 transition-all"
+                >
+                  <Edit2 size={14} /> Modifica Gioco & Fazioni
+                </button>
+              </div>
+
+              {/* Scheda intestazione gioco con statistiche al posto delle fazioni */}
               <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
                 <div className="w-28 h-28 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
                   {selectedGameDetail.image ? (
@@ -643,28 +693,35 @@ export default function BoardGameTracker() {
                     <Gamepad2 size={48} className="text-slate-700" />
                   )}
                 </div>
-                <div className="text-center md:text-left flex-1 space-y-2">
-                  <h2 className="text-2xl font-black text-white">{selectedGameDetail.name}</h2>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Razze / Fazioni disponibili:</p>
-                    {selectedGameDetail.factions && selectedGameDetail.factions.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
-                        {selectedGameDetail.factions.map((f, i) => (
-                          <span key={i} className="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-1 rounded-xl font-medium">
-                            {f}
-                          </span>
-                        ))}
+                
+                {(() => {
+                  const gStats = getGameStats(selectedGameDetail.name);
+                  return (
+                    <div className="text-center md:text-left flex-1 space-y-3 w-full">
+                      <h2 className="text-2xl font-black text-white">{selectedGameDetail.name}</h2>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                          <p className="text-[10px] uppercase font-semibold text-slate-400">Partite Giocate</p>
+                          <p className="text-lg font-black text-white mt-0.5">{gStats.totalPlayed}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                          <p className="text-[10px] uppercase font-semibold text-slate-400">Giocatore più vincente</p>
+                          <p className="text-sm font-bold text-emerald-400 mt-0.5 truncate" title={gStats.bestPlayer}>{gStats.bestPlayer}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                          <p className="text-[10px] uppercase font-semibold text-slate-400">Punteggio Medio</p>
+                          <p className="text-lg font-black text-amber-400 mt-0.5">{gStats.avgScore} pt</p>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">Nessuna fazione predefinita configurata.</p>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-3">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Clock size={18} className="text-indigo-400" /> Partite disputate a {selectedGameDetail.name}
+                  <Clock size={18} className="text-indigo-400" /> Elenco partite disputate
                 </h3>
                 {(() => {
                   const gameMatches = matches.filter(m => m.game.toLowerCase() === selectedGameDetail.name.toLowerCase());
@@ -1007,13 +1064,13 @@ export default function BoardGameTracker() {
                 </div>
               )}
 
-              {/* 6. GIOCHI */}
+              {/* 6. GIOCHI (SENZA FAZIONI NELL'ANTEPRIMA) */}
               {activeTab === 'giochi' && (
                 <div className="space-y-5">
                   <div className="flex justify-between items-center">
                     <div>
                       <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Clicca su un gioco per vederne i dettagli e le partite fatte</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Clicca su un gioco per vederne i dettagli e le statistiche</p>
                     </div>
                     <button 
                       onClick={() => { 
@@ -1051,16 +1108,10 @@ export default function BoardGameTracker() {
                           <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
                             <div>
                               <h3 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">{game.name}</h3>
-                              {game.factions && game.factions.length > 0 ? (
-                                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
-                                  <span className="text-indigo-400 font-semibold">Fazioni:</span> {game.factions.join(', ')}
-                                </p>
-                              ) : (
-                                <p className="text-[11px] text-slate-500 mt-1 italic">Nessuna fazione impostata</p>
-                              )}
+                              <p className="text-[11px] text-slate-400 mt-1">{gameMatches.length} sessioni registrate</p>
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                              <span className="text-xs text-indigo-400 font-semibold">Apri dettagli</span>
+                              <span className="text-xs text-indigo-400 font-semibold">Apri statistiche</span>
                               <button 
                                 onClick={(e) => { 
                                   e.stopPropagation();
@@ -1362,7 +1413,7 @@ export default function BoardGameTracker() {
 
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Razze / Fazioni del gioco</label>
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Razze / Fazioni del gioco (per la scelta in partita)</label>
                   <button type="button" onClick={addGameFactionField} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi fazione</button>
                 </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
