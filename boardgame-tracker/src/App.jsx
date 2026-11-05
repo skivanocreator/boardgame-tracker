@@ -4,7 +4,7 @@ import {
   getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, onSnapshot 
 } from 'firebase/firestore';
 import { 
-  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, AlertCircle, UserPlus, Menu, X, ChevronRight, ArrowLeft, Play, CheckCircle2 
+  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, AlertCircle, UserPlus, Menu, X, ChevronRight, ArrowLeft, Play, CheckCircle2, FileText 
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -45,6 +45,10 @@ export default function BoardGameTracker() {
   // Modale Termina Partita in Corso
   const [finishingMatch, setFinishingMatch] = useState(null);
   const [finishScores, setFinishScores] = useState({});
+
+  // Modale Modifica Note Cronologia
+  const [editingNotesMatch, setEditingNotesMatch] = useState(null);
+  const [currentNotesValue, setCurrentNotesValue] = useState('');
 
   // Modale Nuovo Giocatore Fisso
   const [showNewPlayerModal, setShowNewPlayerModal] = useState(false);
@@ -213,6 +217,21 @@ export default function BoardGameTracker() {
     } catch (err) {
       console.error(err);
       alert("Errore durante il salvataggio dei punteggi.");
+    }
+  };
+
+  const handleSaveNotes = async (e) => {
+    e.preventDefault();
+    if (!editingNotesMatch) return;
+    try {
+      await updateDoc(doc(db, 'matches', editingNotesMatch.id), {
+        notes: currentNotesValue
+      });
+      setEditingNotesMatch(null);
+      setCurrentNotesValue('');
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante il salvataggio delle note.");
     }
   };
 
@@ -673,7 +692,7 @@ export default function BoardGameTracker() {
                     ) : (
                       matches.map(m => (
                         <div key={m.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-slate-700 transition-all">
-                          <div>
+                          <div className="flex-1">
                             <div className="flex items-center gap-2.5">
                               <h3 className="font-bold text-sm sm:text-base text-white">{m.game}</h3>
                               <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
@@ -688,7 +707,18 @@ export default function BoardGameTracker() {
                                 </span>
                               ))}
                             </div>
-                            {m.notes && <p className="text-xs text-slate-400 mt-1.5 italic">Note: "{m.notes}"</p>}
+                            <div className="mt-2 flex items-center gap-2">
+                              <p className="text-xs text-slate-300 italic">Note: {m.notes ? `"${m.notes}"` : <span className="text-slate-500">Nessuna nota</span>}</p>
+                              <button 
+                                onClick={() => {
+                                  setEditingNotesMatch(m);
+                                  setCurrentNotesValue(m.notes || '');
+                                }}
+                                className="text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all border border-indigo-500/20"
+                              >
+                                <FileText size={12} /> Modifica note
+                              </button>
+                            </div>
                           </div>
                           <button 
                             onClick={() => handleDeleteMatch(m.id)}
@@ -897,7 +927,8 @@ export default function BoardGameTracker() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Layout a colonna singola per evitare sovrapposizioni su mobile/tablet */}
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
                   <input 
@@ -1033,6 +1064,36 @@ export default function BoardGameTracker() {
               <div className="pt-2 flex justify-end gap-2.5 shrink-0">
                 <button type="button" onClick={() => setFinishingMatch(null)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
                 <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Registra Punteggi</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE MODIFICA NOTE CRONOLOGIA */}
+      {editingNotesMatch && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl my-auto">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+              <h3 className="font-bold text-sm sm:text-base text-white">Modifica Note: {editingNotesMatch.game}</h3>
+              <button onClick={() => setEditingNotesMatch(null)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveNotes} className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Resoconto / Note Post-Game</label>
+                <textarea 
+                  rows="4"
+                  value={currentNotesValue}
+                  onChange={(e) => setCurrentNotesValue(e.target.value)}
+                  placeholder="Scrivi cosa è successo durante o dopo la partita..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button type="button" onClick={() => setEditingNotesMatch(null)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Salva Note</button>
               </div>
             </form>
           </div>
