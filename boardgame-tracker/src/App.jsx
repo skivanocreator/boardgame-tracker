@@ -489,606 +489,602 @@ export default function BoardGameTracker() {
         {loading ? (
           <div className="text-center py-20 text-slate-500 animate-pulse font-medium text-sm">Sincronizzazione dati cloud...</div>
         ) : (
-          <>
-            {/* SEZIONE DETTAGLIO GIOCATORE */}
-            {selectedPlayerDetail ? (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex justify-between items-center">
-                  <button 
-                    onClick={() => setSelectedPlayerDetail(null)}
-                    className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
-                  >
-                    <ArrowLeft size={16} /> Torna all'elenco giocatori
-                  </button>
-
-                  <button 
-                    onClick={() => {
-                      setEditingPlayer(selectedPlayerDetail);
-                      setNewPlayerName(selectedPlayerDetail.name);
-                      setNewPlayerImage(selectedPlayerDetail.image || '');
-                      setShowNewPlayerModal(true);
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 px-3 py-2 rounded-xl border border-slate-700 transition-all"
-                  >
-                    <Edit2 size={14} /> Modifica Profilo
-                  </button>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
-                  {selectedPlayerDetail.image ? (
-                    <img src={selectedPlayerDetail.image} alt={selectedPlayerDetail.name} className="w-20 h-20 rounded-2xl object-cover shadow-lg border border-slate-700" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-3xl shadow-lg shadow-indigo-600/30">
-                      {selectedPlayerDetail.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="text-center md:text-left flex-1">
-                    <h2 className="text-2xl font-black text-white">{selectedPlayerDetail.name}</h2>
-                    <p className="text-xs text-slate-400 mt-1">Profilo e statistiche globali di tutti i tempi</p>
-                  </div>
-                </div>
-
-                {(() => {
-                  const stats = getPlayerGlobalStats(selectedPlayerDetail.name);
-                  return (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
-                        <p className="text-xs text-slate-400 font-semibold uppercase">Partite Giocate</p>
-                        <p className="text-2xl font-black text-white mt-1">{stats.played}</p>
-                      </div>
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
-                        <p className="text-xs text-slate-400 font-semibold uppercase">Vittorie Totali</p>
-                        <p className="text-2xl font-black text-emerald-400 mt-1">{stats.wins}</p>
-                      </div>
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
-                        <p className="text-xs text-slate-400 font-semibold uppercase">% Vittorie</p>
-                        <p className="text-2xl font-black text-indigo-300 mt-1">{stats.winRate}%</p>
-                      </div>
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
-                        <p className="text-xs text-slate-400 font-semibold uppercase">Punti Totali di Sempre</p>
-                        <p className="text-2xl font-black text-amber-400 mt-1">{stats.totalScore}</p>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-            /* SEZIONE DETTAGLIO PARTITA DALLA CRONOLOGIA */
-            ) : selectedMatchDetail ? (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex justify-between items-center">
-                  <button 
-                    onClick={() => setSelectedMatchDetail(null)}
-                    className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
-                  >
-                    <ArrowLeft size={16} /> Torna alla cronologia
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteMatch(selectedMatchDetail.id)}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-red-500/20 transition-all"
-                  >
-                    <Trash2 size={14} /> Elimina Partita
-                  </button>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-slate-800">
-                    <div>
-                      <div className="flex items-center gap-2.5">
-                        <h2 className="text-2xl font-black text-white">{selectedMatchDetail.game}</h2>
-                        <span className="bg-indigo-500/10 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-500/20">{selectedMatchDetail.season}</span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                        <Calendar size={14} /> Registrata il {selectedMatchDetail.date}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Risultati e Partecipanti</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {selectedMatchDetail.players?.map((p, idx) => (
-                        <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between ${p.isWinner ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-slate-950 border-slate-800 text-slate-200'}`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${p.isWinner ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30' : 'bg-slate-800 text-slate-300'}`}>
-                              {p.isWinner ? '👑' : `#${idx + 1}`}
-                            </div>
-                            <div>
-                              <p className="font-bold text-sm sm:text-base text-white">{p.name}</p>
-                              {p.faction && <p className="text-xs text-indigo-300">Fazione: {p.faction}</p>}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xl font-black text-amber-400">{p.score}</p>
-                            <p className="text-[10px] uppercase tracking-wider text-slate-400">punti</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-800">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                        <FileText size={14} /> Note / Resoconto Post-Game
-                      </h3>
-                      <button 
-                        onClick={() => {
-                          setEditingNotesMatch(selectedMatchDetail);
-                          setCurrentNotesValue(selectedMatchDetail.notes || '');
-                        }}
-                        className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition-all"
-                      >
-                        <Edit2 size={12} /> Modifica note
-                      </button>
-                    </div>
-                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-sm text-slate-300 italic">
-                      {selectedMatchDetail.notes ? `"${selectedMatchDetail.notes}"` : 'Nessuna nota registrata per questa partita.'}
-                    </div>
-                  </div>
-                </div>
-
-            /* SEZIONE DETTAGLIO GIOCO DALLA LIBRERIA */
-            ) : selectedGameDetail ? (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          selectedPlayerDetail ? (
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center">
                 <button 
-                  onClick={() => setSelectedGameDetail(null)}
+                  onClick={() => setSelectedPlayerDetail(null)}
                   className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
                 >
-                  <ArrowLeft size={16} /> Torna alla libreria giochi
+                  <ArrowLeft size={16} /> Torna all'elenco giocatori
                 </button>
 
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
-                  <div className="w-28 h-28 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
-                    {selectedGameDetail.image ? (
-                      <img src={selectedGameDetail.image} alt={selectedGameDetail.name} className="w-full h-full object-cover" />
+                <button 
+                  onClick={() => {
+                    setEditingPlayer(selectedPlayerDetail);
+                    setNewPlayerName(selectedPlayerDetail.name);
+                    setNewPlayerImage(selectedPlayerDetail.image || '');
+                    setShowNewPlayerModal(true);
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 px-3 py-2 rounded-xl border border-slate-700 transition-all"
+                >
+                  <Edit2 size={14} /> Modifica Profilo
+                </button>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
+                {selectedPlayerDetail.image ? (
+                  <img src={selectedPlayerDetail.image} alt={selectedPlayerDetail.name} className="w-20 h-20 rounded-2xl object-cover shadow-lg border border-slate-700" />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-3xl shadow-lg shadow-indigo-600/30">
+                    {selectedPlayerDetail.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-center md:text-left flex-1">
+                  <h2 className="text-2xl font-black text-white">{selectedPlayerDetail.name}</h2>
+                  <p className="text-xs text-slate-400 mt-1">Profilo e statistiche globali di tutti i tempi</p>
+                </div>
+              </div>
+
+              {(() => {
+                const stats = getPlayerGlobalStats(selectedPlayerDetail.name);
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
+                      <p className="text-xs text-slate-400 font-semibold uppercase">Partite Giocate</p>
+                      <p className="text-2xl font-black text-white mt-1">{stats.played}</p>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
+                      <p className="text-xs text-slate-400 font-semibold uppercase">Vittorie Totali</p>
+                      <p className="text-2xl font-black text-emerald-400 mt-1">{stats.wins}</p>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
+                      <p className="text-xs text-slate-400 font-semibold uppercase">% Vittorie</p>
+                      <p className="text-2xl font-black text-indigo-300 mt-1">{stats.winRate}%</p>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
+                      <p className="text-xs text-slate-400 font-semibold uppercase">Punti Totali di Sempre</p>
+                      <p className="text-2xl font-black text-amber-400 mt-1">{stats.totalScore}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+          ) : selectedMatchDetail ? (
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center">
+                <button 
+                  onClick={() => setSelectedMatchDetail(null)}
+                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
+                >
+                  <ArrowLeft size={16} /> Torna alla cronologia
+                </button>
+                <button 
+                  onClick={() => handleDeleteMatch(selectedMatchDetail.id)}
+                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-red-500/20 transition-all"
+                >
+                  <Trash2 size={14} /> Elimina Partita
+                </button>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-slate-800">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h2 className="text-2xl font-black text-white">{selectedMatchDetail.game}</h2>
+                      <span className="bg-indigo-500/10 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-500/20">{selectedMatchDetail.season}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                      <Calendar size={14} /> Registrata il {selectedMatchDetail.date}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Risultati e Partecipanti</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedMatchDetail.players?.map((p, idx) => (
+                      <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between ${p.isWinner ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-slate-950 border-slate-800 text-slate-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${p.isWinner ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30' : 'bg-slate-800 text-slate-300'}`}>
+                            {p.isWinner ? '👑' : `#${idx + 1}`}
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm sm:text-base text-white">{p.name}</p>
+                            {p.faction && <p className="text-xs text-indigo-300">Fazione: {p.faction}</p>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-black text-amber-400">{p.score}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-slate-400">punti</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <FileText size={14} /> Note / Resoconto Post-Game
+                    </h3>
+                    <button 
+                      onClick={() => {
+                        setEditingNotesMatch(selectedMatchDetail);
+                        setCurrentNotesValue(selectedMatchDetail.notes || '');
+                      }}
+                      className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition-all"
+                    >
+                      <Edit2 size={12} /> Modifica note
+                    </button>
+                  </div>
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-sm text-slate-300 italic">
+                    {selectedMatchDetail.notes ? `"${selectedMatchDetail.notes}"` : 'Nessuna nota registrata per questa partita.'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          ) : selectedGameDetail ? (
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              <button 
+                onClick={() => setSelectedGameDetail(null)}
+                className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
+              >
+                <ArrowLeft size={16} /> Torna alla libreria giochi
+              </button>
+
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
+                <div className="w-28 h-28 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                  {selectedGameDetail.image ? (
+                    <img src={selectedGameDetail.image} alt={selectedGameDetail.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Gamepad2 size={48} className="text-slate-700" />
+                  )}
+                </div>
+                <div className="text-center md:text-left flex-1 space-y-2">
+                  <h2 className="text-2xl font-black text-white">{selectedGameDetail.name}</h2>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Razze / Fazioni disponibili:</p>
+                    {selectedGameDetail.factions && selectedGameDetail.factions.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
+                        {selectedGameDetail.factions.map((f, i) => (
+                          <span key={i} className="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-1 rounded-xl font-medium">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
-                      <Gamepad2 size={48} className="text-slate-700" />
+                      <p className="text-xs text-slate-500 italic">Nessuna fazione predefinita configurata.</p>
                     )}
                   </div>
-                  <div className="text-center md:text-left flex-1 space-y-2">
-                    <h2 className="text-2xl font-black text-white">{selectedGameDetail.name}</h2>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Razze / Fazioni disponibili:</p>
-                      {selectedGameDetail.factions && selectedGameDetail.factions.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
-                          {selectedGameDetail.factions.map((f, i) => (
-                            <span key={i} className="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-1 rounded-xl font-medium">
-                              {f}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Clock size={18} className="text-indigo-400" /> Partite disputate a {selectedGameDetail.name}
+                </h3>
+                {(() => {
+                  const gameMatches = matches.filter(m => m.game.toLowerCase() === selectedGameDetail.name.toLowerCase());
+                  if (gameMatches.length === 0) {
+                    return (
+                      <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
+                        Non è stata ancora registrata nessuna partita per questo gioco.
+                      </div>
+                    );
+                  }
+                  return gameMatches.map(m => (
+                    <div 
+                      key={m.id} 
+                      onClick={() => setSelectedMatchDetail(m)}
+                      className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2.5">
+                          <h4 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">Partita del {m.date}</h4>
+                          <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {m.players?.map((p, i) => (
+                            <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
+                              {p.isWinner && '👑'} {p.name} {p.faction && `(${p.faction})`}: <strong>{p.score}</strong> pt
                             </span>
                           ))}
                         </div>
-                      ) : (
-                        <p className="text-xs text-slate-500 italic">Nessuna fazione predefinita configurata.</p>
-                      )}
+                      </div>
+                      <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+          ) : (
+            <>
+              {/* 1. CLASSIFICA */}
+              {activeTab === 'classifica' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                    <div>
+                      <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                        <Trophy className="text-amber-400" size={18} /> Classifica Generale
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Seleziona la stagione per filtrare i punteggi</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
+                      <Calendar size={15} className="text-indigo-400 shrink-0" />
+                      <select 
+                        value={selectedSeason} 
+                        onChange={(e) => setSelectedSeason(e.target.value)}
+                        className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer w-full"
+                      >
+                        <option value="all" className="bg-slate-900">✨ Tutte le stagioni</option>
+                        {seasons.map(s => (
+                          <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Clock size={18} className="text-indigo-400" /> Partite disputate a {selectedGameDetail.name}
-                  </h3>
-                  {(() => {
-                    const gameMatches = matches.filter(m => m.game.toLowerCase() === selectedGameDetail.name.toLowerCase());
-                    if (gameMatches.length === 0) {
-                      return (
-                        <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
-                          Non è stata ancora registrata nessuna partita per questo gioco.
-                        </div>
-                      );
-                    }
-                    return gameMatches.map(m => (
-                      <div 
-                        key={m.id} 
-                        onClick={() => setSelectedMatchDetail(m)}
-                        className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
-                      >
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
+                    {leaderboard.length === 0 ? (
+                      <div className="p-12 text-center text-slate-500 text-sm">Nessuna partita registrata in questa stagione.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[500px]">
+                          <thead>
+                            <tr className="bg-slate-950/60 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                              <th className="py-3.5 px-5 font-semibold">Pos</th>
+                              <th className="py-3.5 px-5 font-semibold">Giocatore</th>
+                              <th className="py-3.5 px-5 font-semibold text-center">Partite</th>
+                              <th className="py-3.5 px-5 font-semibold text-center">Vittorie</th>
+                              <th className="py-3.5 px-5 font-semibold text-center">% Vittorie</th>
+                              <th className="py-3.5 px-5 font-semibold text-right">Punti Totali</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
+                            {leaderboard.map((item, idx) => {
+                              const winRate = item.played > 0 ? ((item.wins / item.played) * 100).toFixed(1) : 0;
+                              const imgUrl = getPlayerImage(item.name);
+                              return (
+                                <tr key={item.name} className="hover:bg-slate-850/50 transition-colors">
+                                  <td className="py-3.5 px-5 font-black text-slate-300">
+                                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                                  </td>
+                                  <td className="py-3.5 px-5 font-bold text-white flex items-center gap-2.5">
+                                    {imgUrl ? (
+                                      <img src={imgUrl} alt={item.name} className="w-8 h-8 rounded-xl object-cover border border-slate-700" />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                        {item.name.charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
+                                    {item.name}
+                                  </td>
+                                  <td className="py-3.5 px-5 text-center text-slate-300 font-medium">{item.played}</td>
+                                  <td className="py-3.5 px-5 text-center font-semibold text-emerald-400">{item.wins}</td>
+                                  <td className="py-3.5 px-5 text-center font-medium text-indigo-300">{winRate}%</td>
+                                  <td className="py-3.5 px-5 text-right font-black text-amber-400 text-sm sm:text-base">{item.totalScore}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. PARTITE IN CORSO */}
+              {activeTab === 'inCorso' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Play size={20} className="text-emerald-400" /> Partite in corso
+                    </h2>
+                  </div>
+
+                  {ongoingMatches.length === 0 ? (
+                    <div className="bg-slate-900 border border-slate-800 p-12 text-center rounded-2xl text-slate-500 text-sm">
+                      Nessuna partita in corso. Clicca su "Avvia Partita" per iniziarne una!
+                    </div>
+                  ) : (
+                    ongoingMatches.map(m => (
+                      <div key={m.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                          <div className="flex items-center gap-2.5">
-                            <h4 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">Partita del {m.date}</h4>
-                            <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-base text-white">{m.game}</h3>
+                            <span className="bg-emerald-500/10 text-emerald-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">In corso</span>
+                            <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
                           </div>
-                          <div className="flex flex-wrap gap-1.5 mt-2">
+                          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                            <Calendar size={12} /> {m.date}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-3">
                             {m.players?.map((p, i) => (
-                              <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
-                                {p.isWinner && '👑'} {p.name} {p.faction && `(${p.faction})`}: <strong>{p.score}</strong> pt
+                              <span key={i} className="text-xs px-3 py-1.5 rounded-xl font-medium bg-slate-950 text-slate-300 border border-slate-800 flex items-center gap-1.5">
+                                👤 {p.name} {p.faction && <span className="text-indigo-400 font-bold">({p.faction})</span>}
                               </span>
                             ))}
                           </div>
+                          {m.notes && <p className="text-xs text-slate-400 mt-2 italic">Note: "{m.notes}"</p>}
                         </div>
-                        <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
+
+                        <div className="flex items-center gap-2 self-end md:self-center">
+                          <button 
+                            onClick={() => {
+                              setFinishingMatch(m);
+                              const initialScores = {};
+                              m.players.forEach(p => { initialScores[p.name] = ''; });
+                              setFinishScores(initialScores);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition-all"
+                          >
+                            <CheckCircle2 size={16} /> Termina Partita
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteOngoing(m.id)}
+                            className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2.5 rounded-xl transition-all border border-red-500/20"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
-                    ));
-                  })()}
+                    ))
+                  )}
                 </div>
-              </div>
+              )}
 
-            ) : (
-              <>
-                {/* 1. CLASSIFICA */}
-                {activeTab === 'classifica' && (
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-                      <div>
-                        <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                          <Trophy className="text-amber-400" size={18} /> Classifica Generale
-                        </h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Seleziona la stagione per filtrare i punteggi</p>
-                      </div>
-                      <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
-                        <Calendar size={15} className="text-indigo-400 shrink-0" />
-                        <select 
-                          value={selectedSeason} 
-                          onChange={(e) => setSelectedSeason(e.target.value)}
-                          className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer w-full"
-                        >
-                          <option value="all" className="bg-slate-900">✨ Tutte le stagioni</option>
-                          {seasons.map(s => (
-                            <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>
-                          ))}
-                        </select>
-                      </div>
+              {/* 3. CRONOLOGIA */}
+              {activeTab === 'cronologia' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                    <div>
+                      <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                        <Clock size={18} className="text-indigo-400" /> Cronologia Partite
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Clicca su una partita per vedere tutti i dettagli e le note</p>
                     </div>
-
-                    <div className="bg-slate-900/60 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
-                      {leaderboard.length === 0 ? (
-                        <div className="p-12 text-center text-slate-500 text-sm">Nessuna partita registrata in questa stagione.</div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse min-w-[500px]">
-                            <thead>
-                              <tr className="bg-slate-950/60 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
-                                <th className="py-3.5 px-5 font-semibold">Pos</th>
-                                <th className="py-3.5 px-5 font-semibold">Giocatore</th>
-                                <th className="py-3.5 px-5 font-semibold text-center">Partite</th>
-                                <th className="py-3.5 px-5 font-semibold text-center">Vittorie</th>
-                                <th className="py-3.5 px-5 font-semibold text-center">% Vittorie</th>
-                                <th className="py-3.5 px-5 font-semibold text-right">Punti Totali</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
-                              {leaderboard.map((item, idx) => {
-                                const winRate = item.played > 0 ? ((item.wins / item.played) * 100).toFixed(1) : 0;
-                                const imgUrl = getPlayerImage(item.name);
-                                return (
-                                  <tr key={item.name} className="hover:bg-slate-850/50 transition-colors">
-                                    <td className="py-3.5 px-5 font-black text-slate-300">
-                                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                                    </td>
-                                    <td className="py-3.5 px-5 font-bold text-white flex items-center gap-2.5">
-                                      {imgUrl ? (
-                                        <img src={imgUrl} alt={item.name} className="w-8 h-8 rounded-xl object-cover border border-slate-700" />
-                                      ) : (
-                                        <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                                          {item.name.charAt(0).toUpperCase()}
-                                        </div>
-                                      )}
-                                      {item.name}
-                                    </td>
-                                    <td className="py-3.5 px-5 text-center text-slate-300 font-medium">{item.played}</td>
-                                    <td className="py-3.5 px-5 text-center font-semibold text-emerald-400">{item.wins}</td>
-                                    <td className="py-3.5 px-5 text-center font-medium text-indigo-300">{winRate}%</td>
-                                    <td className="py-3.5 px-5 text-right font-black text-amber-400 text-sm sm:text-base">{item.totalScore}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
+                      <Filter size={15} className="text-indigo-400 shrink-0" />
+                      <select 
+                        value={cronologiaGameFilter} 
+                        onChange={(e) => setCronologiaGameFilter(e.target.value)}
+                        className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer w-full"
+                      >
+                        <option value="all" className="bg-slate-900">🎮 Tutti i giochi</option>
+                        {games.map(g => (
+                          <option key={g.id} value={g.name} className="bg-slate-900">{g.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )}
 
-                {/* 2. PARTITE IN CORSO */}
-                {activeTab === 'inCorso' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Play size={20} className="text-emerald-400" /> Partite in corso
-                      </h2>
-                    </div>
+                  <div className="space-y-3.5">
+                    {(() => {
+                      const displayMatches = cronologiaGameFilter === 'all' 
+                        ? matches 
+                        : matches.filter(m => m.game.toLowerCase() === cronologiaGameFilter.toLowerCase());
 
-                    {ongoingMatches.length === 0 ? (
-                      <div className="bg-slate-900 border border-slate-800 p-12 text-center rounded-2xl text-slate-500 text-sm">
-                        Nessuna partita in corso. Clicca su "Avvia Partita" per iniziarne una!
-                      </div>
-                    ) : (
-                      ongoingMatches.map(m => (
-                        <div key={m.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <h3 className="font-bold text-base text-white">{m.game}</h3>
-                              <span className="bg-emerald-500/10 text-emerald-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">In corso</span>
-                              <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                      if (displayMatches.length === 0) {
+                        return (
+                          <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
+                            Nessuna partita trovata con questo filtro.
+                          </div>
+                        );
+                      }
+
+                      return displayMatches.map(m => (
+                        <div 
+                          key={m.id} 
+                          onClick={() => setSelectedMatchDetail(m)}
+                          className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2.5">
+                              <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-indigo-300 transition-colors">{m.game}</h3>
+                              <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
                             </div>
                             <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
                               <Calendar size={12} /> {m.date}
                             </p>
-                            <div className="flex flex-wrap gap-2 mt-3">
+                            <div className="flex flex-wrap gap-1.5 mt-2.5">
                               {m.players?.map((p, i) => (
-                                <span key={i} className="text-xs px-3 py-1.5 rounded-xl font-medium bg-slate-950 text-slate-300 border border-slate-800 flex items-center gap-1.5">
-                                  👤 {p.name} {p.faction && <span className="text-indigo-400 font-bold">({p.faction})</span>}
+                                <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
+                                  {p.isWinner && '👑'} {p.name} {p.faction && <span className="text-indigo-300">({p.faction})</span>}: <strong>{p.score}</strong> pt
                                 </span>
                               ))}
                             </div>
-                            {m.notes && <p className="text-xs text-slate-400 mt-2 italic">Note: "{m.notes}"</p>}
                           </div>
-
-                          <div className="flex items-center gap-2 self-end md:self-center">
-                            <button 
-                              onClick={() => {
-                                setFinishingMatch(m);
-                                const initialScores = {};
-                                m.players.forEach(p => { initialScores[p.name] = ''; });
-                                setFinishScores(initialScores);
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition-all"
-                            >
-                              <CheckCircle2 size={16} /> Termina Partita
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteOngoing(m.id)}
-                              className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2.5 rounded-xl transition-all border border-red-500/20"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+                          <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
                         </div>
-                      ))
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. GIOCATORI */}
+              {activeTab === 'giocatori' && (
+                <div className="space-y-5">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Anagrafica Giocatori Fissi</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Clicca su un giocatore per aprire le sue informazioni complete o modificarne la foto</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setEditingPlayer(null);
+                        setNewPlayerName('');
+                        setNewPlayerImage('');
+                        setShowNewPlayerModal(true);
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                    >
+                      <UserPlus size={15} /> Aggiungi Giocatore
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                    {playersList.length === 0 ? (
+                      <div className="col-span-full bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
+                        Nessun giocatore registrato. Aggiungine uno!
+                      </div>
+                    ) : (
+                      playersList.map(pl => {
+                        const stats = getPlayerGlobalStats(pl.name);
+                        return (
+                          <div 
+                            key={pl.id} 
+                            onClick={() => setSelectedPlayerDetail(pl)}
+                            className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group"
+                          >
+                            <div className="flex items-center gap-3">
+                              {pl.image ? (
+                                <img src={pl.image} alt={pl.name} className="w-10 h-10 rounded-xl object-cover border border-slate-700 shadow-md" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-base group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                  {pl.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div>
+                                <h3 className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors">{pl.name}</h3>
+                                <p className="text-[11px] text-slate-400 mt-0.5">{stats.played} partite • {stats.wins} vittorie</p>
+                              </div>
+                            </div>
+                            <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* 3. CRONOLOGIA (CON FILTRO PER GIOCO E ANTICPRIMA SENZA NOTE) */}
-                {activeTab === 'cronologia' && (
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-                      <div>
-                        <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                          <Clock size={18} className="text-indigo-400" /> Cronologia Partite
-                        </h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Clicca su una partita per vedere tutti i dettagli e le note</p>
-                      </div>
-                      <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
-                        <Filter size={15} className="text-indigo-400 shrink-0" />
-                        <select 
-                          value={cronologiaGameFilter} 
-                          onChange={(e) => setCronologiaGameFilter(e.target.value)}
-                          className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer w-full"
-                        >
-                          <option value="all" className="bg-slate-900">🎮 Tutti i giochi</option>
-                          {games.map(g => (
-                            <option key={g.id} value={g.name} className="bg-slate-900">{g.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3.5">
-                      {(() => {
-                        const displayMatches = cronologiaGameFilter === 'all' 
-                          ? matches 
-                          : matches.filter(m => m.game.toLowerCase() === cronologiaGameFilter.toLowerCase());
-
-                        if (displayMatches.length === 0) {
-                          return (
-                            <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
-                              Nessuna partita trovata con questo filtro.
-                            </div>
-                          );
-                        }
-
-                        return displayMatches.map(m => (
-                          <div 
-                            key={m.id} 
-                            onClick={() => setSelectedMatchDetail(m)}
-                            className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2.5">
-                                <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-indigo-300 transition-colors">{m.game}</h3>
-                                <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
-                              </div>
-                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                                <Calendar size={12} /> {m.date}
-                              </p>
-                              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                                {m.players?.map((p, i) => (
-                                  <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
-                                    {p.isWinner && '👑'} {p.name} {p.faction && <span className="text-indigo-300">({p.faction})</span>}: <strong>{p.score}</strong> pt
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
-                          </div>
-                        ));
-                      })()}
-                    </div>
+              {/* 5. STAGIONI */}
+              {activeTab === 'stagioni' && (
+                <div className="space-y-5">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-white">Stagioni & Leghe</h2>
+                    <button 
+                      onClick={() => { setEditingSeason(null); setNewSeasonName(''); setShowNewSeasonModal(true); }}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                    >
+                      <Plus size={15} /> Nuova Stagione
+                    </button>
                   </div>
-                )}
 
-                {/* 4. GIOCATORI */}
-                {activeTab === 'giocatori' && (
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h2 className="text-lg font-bold text-white">Anagrafica Giocatori Fissi</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Clicca su un giocatore per aprire le sue informazioni complete o modificarne la foto</p>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setEditingPlayer(null);
-                          setNewPlayerName('');
-                          setNewPlayerImage('');
-                          setShowNewPlayerModal(true);
-                        }}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
-                      >
-                        <UserPlus size={15} /> Aggiungi Giocatore
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                      {playersList.length === 0 ? (
-                        <div className="col-span-full bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
-                          Nessun giocatore registrato. Aggiungine uno!
-                        </div>
-                      ) : (
-                        playersList.map(pl => {
-                          const stats = getPlayerGlobalStats(pl.name);
-                          return (
-                            <div 
-                              key={pl.id} 
-                              onClick={() => setSelectedPlayerDetail(pl)}
-                              className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                    {seasons.map(season => {
+                      const count = matches.filter(m => m.season === season.name).length;
+                      return (
+                        <div key={season.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex justify-between items-center hover:border-slate-700 transition-all">
+                          <div>
+                            <h3 className="font-bold text-sm sm:text-base text-white">{season.name}</h3>
+                            <p className="text-xs text-slate-400 mt-0.5">{count} partite registrate</p>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button 
+                              onClick={() => { setEditingSeason(season); setNewSeasonName(season.name); setShowNewSeasonModal(true); }}
+                              className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-2 rounded-xl active:scale-95 transition-all border border-slate-700/50"
                             >
-                              <div className="flex items-center gap-3">
-                                {pl.image ? (
-                                  <img src={pl.image} alt={pl.name} className="w-10 h-10 rounded-xl object-cover border border-slate-700 shadow-md" />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-base group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                    {pl.name.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <div>
-                                  <h3 className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors">{pl.name}</h3>
-                                  <p className="text-[11px] text-slate-400 mt-0.5">{stats.played} partite • {stats.wins} vittorie</p>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                              <Edit2 size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteSeason(season.id)}
+                              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl active:scale-95 transition-all border border-red-500/20"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* 5. STAGIONI */}
-                {activeTab === 'stagioni' && (
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-lg font-bold text-white">Stagioni & Leghe</h2>
-                      <button 
-                        onClick={() => { setEditingSeason(null); setNewSeasonName(''); setShowNewSeasonModal(true); }}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
-                      >
-                        <Plus size={15} /> Nuova Stagione
-                      </button>
+              {/* 6. GIOCHI */}
+              {activeTab === 'giochi' && (
+                <div className="space-y-5">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Clicca su un gioco per vederne i dettagli e le partite fatte</p>
                     </div>
+                    <button 
+                      onClick={() => { 
+                        setEditingGame(null); 
+                        setNewGameName(''); 
+                        setNewGameImage(''); 
+                        setGameFactionsList(['']);
+                        setShowNewGameModal(true); 
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                    >
+                      <Plus size={15} /> Aggiungi Gioco
+                    </button>
+                  </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-                      {seasons.map(season => {
-                        const count = matches.filter(m => m.season === season.name).length;
-                        return (
-                          <div key={season.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex justify-between items-center hover:border-slate-700 transition-all">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {games.map(game => {
+                      const gameMatches = matches.filter(m => m.game.toLowerCase() === game.name.toLowerCase());
+                      return (
+                        <div 
+                          key={game.id} 
+                          onClick={() => setSelectedGameDetail(game)}
+                          className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                        >
+                          <div className="h-44 bg-slate-950 relative overflow-hidden flex items-center justify-center">
+                            {game.image ? (
+                              <img src={game.image} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            ) : (
+                              <Gamepad2 size={40} className="text-slate-700" />
+                            )}
+                            <div className="absolute top-2.5 right-2.5 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-xl text-xs font-bold text-indigo-300 border border-slate-800">
+                              {gameMatches.length} partite
+                            </div>
+                          </div>
+                          <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
                             <div>
-                              <h3 className="font-bold text-sm sm:text-base text-white">{season.name}</h3>
-                              <p className="text-xs text-slate-400 mt-0.5">{count} partite registrate</p>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button 
-                                onClick={() => { setEditingSeason(season); setNewSeasonName(season.name); setShowNewSeasonModal(true); }}
-                                className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-2 rounded-xl active:scale-95 transition-all border border-slate-700/50"
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteSeason(season.id)}
-                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl active:scale-95 transition-all border border-red-500/20"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* 6. GIOCHI */}
-                {activeTab === 'giochi' && (
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Clicca su un gioco per vederne i dettagli e le partite fatte</p>
-                      </div>
-                      <button 
-                        onClick={() => { 
-                          setEditingGame(null); 
-                          setNewGameName(''); 
-                          setNewGameImage(''); 
-                          setGameFactionsList(['']);
-                          setShowNewGameModal(true); 
-                        }}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
-                      >
-                        <Plus size={15} /> Aggiungi Gioco
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {games.map(game => {
-                        const gameMatches = matches.filter(m => m.game.toLowerCase() === game.name.toLowerCase());
-                        return (
-                          <div 
-                            key={game.id} 
-                            onClick={() => setSelectedGameDetail(game)}
-                            className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-300 hover:-translate-y-1"
-                          >
-                            <div className="h-44 bg-slate-950 relative overflow-hidden flex items-center justify-center">
-                              {game.image ? (
-                                <img src={game.image} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <h3 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">{game.name}</h3>
+                              {game.factions && game.factions.length > 0 ? (
+                                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                                  <span className="text-indigo-400 font-semibold">Fazioni:</span> {game.factions.join(', ')}
+                                </p>
                               ) : (
-                                <Gamepad2 size={40} className="text-slate-700" />
+                                <p className="text-[11px] text-slate-500 mt-1 italic">Nessuna fazione impostata</p>
                               )}
-                              <div className="absolute top-2.5 right-2.5 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-xl text-xs font-bold text-indigo-300 border border-slate-800">
-                                {gameMatches.length} partite
-                              </div>
                             </div>
-                            <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
-                              <div>
-                                <h3 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">{game.name}</h3>
-                                {game.factions && game.factions.length > 0 ? (
-                                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
-                                    <span className="text-indigo-400 font-semibold">Fazioni:</span> {game.factions.join(', ')}
-                                  </p>
-                                ) : (
-                                  <p className="text-[11px] text-slate-500 mt-1 italic">Nessuna fazione impostata</p>
-                                )}
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                                <span className="text-xs text-indigo-400 font-semibold">Apri dettagli</span>
-                                <button 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setEditingGame(game); 
-                                    setNewGameName(game.name); 
-                                    setNewGameImage(game.image || ''); 
-                                    setGameFactionsList(game.factions && game.factions.length > 0 ? game.factions : ['']);
-                                    setShowNewGameModal(true); 
-                                  }}
-                                  className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-1.5 rounded-lg text-xs font-semibold border border-slate-700/50"
-                                  title="Modifica Gioco"
-                                >
-                                  <Edit2 size={13} />
-                                </button>
-                              </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                              <span className="text-xs text-indigo-400 font-semibold">Apri dettagli</span>
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
+                                  setEditingGame(game); 
+                                  setNewGameName(game.name); 
+                                  setNewGameImage(game.image || ''); 
+                                  setGameFactionsList(game.factions && game.factions.length > 0 ? game.factions : ['']);
+                                  setShowNewGameModal(true); 
+                                }}
+                                className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-1.5 rounded-lg text-xs font-semibold border border-slate-700/50"
+                                title="Modifica Gioco"
+                              >
+                                <Edit2 size={13} />
+                              </button>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </>
-            )}
-          </>
+                </div>
+              )}
+            </>
+          )
         )}
       </main>
 
