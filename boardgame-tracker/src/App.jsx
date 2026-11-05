@@ -1,1352 +1,647 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { 
-  getFirestore, 
-  collection, 
-  onSnapshot, 
-  addDoc, 
-  setDoc,
-  deleteDoc, 
-  doc, 
-  serverTimestamp 
+  getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, onSnapshot 
 } from 'firebase/firestore';
 import { 
-  Trophy, 
-  Dices, 
-  Users, 
-  Plus, 
-  Calendar, 
-  Trash2, 
-  Cloud, 
-  CloudOff, 
-  Sparkles, 
-  Award, 
-  Gamepad2, 
-  TrendingUp, 
-  ChevronRight, 
-  Info,
-  CheckCircle2,
-  Medal,
-  Star,
-  FileText,
-  Clock,
-  Zap,
-  Filter,
-  Image as ImageIcon,
-  Edit,
-  Layers,
-  Check,
-  X
+  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, CheckCircle, AlertCircle, Image as ImageIcon, Sparkles 
 } from 'lucide-react';
 
-// --- CONFIGURAZIONE E INIZIALIZZAZIONE FIREBASE ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : {
-      apiKey: "demo-api-key",
-      authDomain: "demo-project.firebaseapp.com",
-      projectId: "demo-project",
-      storageBucket: "demo-project.appspot.com",
-      messagingSenderId: "123456789",
-      appId: "1:123456789:web:demo"
-    };
+// Configurazione Firebase con le tue chiavi
+const firebaseConfig = {
+  apiKey: "AIzaSyChEB5QgUD8sAwavqIMapleKG06i0aW-y4",
+  authDomain: "boardgametracker-1b736.firebaseapp.com",
+  projectId: "boardgametracker-1b736",
+  storageBucket: "boardgametracker-1b736.firebasestorage.app",
+  messagingSenderId: "786935723880",
+  appId: "1:786935723880:web:6997fb72c0db3897d008dd"
+};
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'board-game-tracker-default';
 
-// Predefined board games with emojis & sample imagery
-const PRESET_GAMES = [
-  { id: 'catan', name: "Catan", icon: "🌾", imageUrl: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=400&q=80" },
-  { id: 'ticket-to-ride', name: "Ticket to Ride", icon: "🚂", imageUrl: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=400&q=80" },
-  { id: 'carcassonne', name: "Carcassonne", icon: "🏰", imageUrl: "https://images.unsplash.com/photo-1563941433-b6a0946530d8?auto=format&fit=crop&w=400&q=80" },
-  { id: 'terraforming-mars', name: "Terraforming Mars", icon: "🚀", imageUrl: "https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=400&q=80" },
-  { id: 'wingspan', name: "Wingspan", icon: "🐦", imageUrl: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?auto=format&fit=crop&w=400&q=80" },
-  { id: 'azul', name: "Azul", icon: "🧩", imageUrl: "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=400&q=80" }
-];
-
-export default function App() {
-  // --- STATI PRINCIPALI ---
-  const [user, setUser] = useState(null);
+export default function BoardGameTracker() {
+  const [activeTab, setActiveTab] = useState('classifica');
   const [matches, setMatches] = useState([]);
-  const [seasons, setSeasons] = useState([]);
-  const [gamesMetaData, setGamesMetaData] = useState([]);
+  const [games, setGames] = useState([]);
+  const [seasons, setSeasons] = useState([{ id: 'all', name: 'Tutte le stagioni' }]);
+  const [selectedSeason, setSelectedSeason] = useState('all');
+  
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, addMatch, games, seasons, history
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [successMsg, setSuccessMsg] = useState(null);
+  const [dbError, setDbError] = useState(false);
 
-  // --- FILTRO STAGIONE GLOBALE ---
-  const [selectedSeasonId, setSelectedSeasonId] = useState('ALL');
+  // Modale Nuova Partita
+  const [showNewMatchModal, setShowNewMatchModal] = useState(false);
+  const [newMatchGame, setNewMatchGame] = useState('');
+  const [newMatchDate, setNewMatchDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newMatchSeason, setNewMatchSeason] = useState('');
+  const [newMatchNotes, setNewMatchNotes] = useState('');
+  const [matchPlayers, setMatchPlayers] = useState([{ name: '', score: '', isWinner: false }]);
 
-  // --- STATI FORM NUOVA PARTITA ---
-  const [gameName, setGameName] = useState('');
-  const [gameCustomInput, setGameCustomInput] = useState('');
-  const [matchDate, setMatchDate] = useState(new Date().toISOString().split('T')[0]);
-  const [playersInput, setPlayersInput] = useState([
-    { name: '', score: '' },
-    { name: '', score: '' }
-  ]);
-  const [manualWinner, setManualWinner] = useState('');
-  const [useManualWinner, setUseManualWinner] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [matchSeasonId, setMatchSeasonId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // --- STATI EDIT IMMAGINE GIOCO ---
+  // Modale Nuovo Gioco / Immagine
+  const [showNewGameModal, setShowNewGameModal] = useState(false);
+  const [newGameName, setNewGameName] = useState('');
+  const [newGameImage, setNewGameImage] = useState('');
   const [editingGame, setEditingGame] = useState(null);
-  const [editImageUrl, setEditImageUrl] = useState('');
 
-  // --- STATI NUOVA STAGIONE ---
+  // Modale Nuova Stagione
+  const [showNewSeasonModal, setShowNewSeasonModal] = useState(false);
   const [newSeasonName, setNewSeasonName] = useState('');
-  const [isCreatingSeason, setIsCreatingSeason] = useState(false);
 
-  // --- STATI FILTRI STORICO ---
-  const [historyGameFilter, setHistoryGameFilter] = useState('ALL');
-  const [historyPlayerFilter, setHistoryPlayerFilter] = useState('ALL');
-
-  // --- AUTHENTICATION EFFECT ---
+  // Sincronizzazione in tempo reale con Firestore
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Auth initialization error:", err);
-        setErrorMsg("Errore di autenticazione Cloud. Riprova ricaricando la pagina.");
-      }
-    };
+    try {
+      const unsubMatches = onSnapshot(collection(db, 'matches'), (snapshot) => {
+        const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMatches(matchesData);
+        setLoading(false);
+      }, (error) => {
+        console.error("Errore matches:", error);
+        setDbError(true);
+        setLoading(false);
+      });
 
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (usr) => {
-      setUser(usr);
-    });
+      const unsubGames = onSnapshot(collection(db, 'games'), (snapshot) => {
+        const gamesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setGames(gamesData);
+      }, (error) => {
+        console.error("Errore games:", error);
+      });
 
-    return () => unsubscribe();
+      const unsubSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
+        const seasonsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSeasons([{ id: 'all', name: 'Tutte le stagioni' }, ...seasonsData]);
+      }, (error) => {
+        console.error("Errore seasons:", error);
+      });
+
+      return () => {
+        unsubMatches();
+        unsubGames();
+        unsubSeasons();
+      };
+    } catch (e) {
+      console.error(e);
+      setDbError(true);
+      setLoading(false);
+    }
   }, []);
 
-  // --- FIRESTORE LISTENERS (Matches, Seasons, Games) ---
-  useEffect(() => {
-    if (!user) return;
-
-    setLoading(true);
-    
-    // Collections
-    const matchesRef = collection(db, 'artifacts', appId, 'public', 'data', 'matches');
-    const seasonsRef = collection(db, 'artifacts', appId, 'public', 'data', 'seasons');
-    const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
-
-    // 1. Matches Listener
-    const unsubMatches = onSnapshot(matchesRef, 
-      (snapshot) => {
-        const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        fetched.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
-        setMatches(fetched);
-        setLoading(false);
-      },
-      (err) => console.error("Firestore matches error:", err)
-    );
-
-    // 2. Seasons Listener
-    const unsubSeasons = onSnapshot(seasonsRef,
-      (snapshot) => {
-        const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setSeasons(fetched);
-
-        // Auto-select active season if matchSeasonId is not set
-        const active = fetched.find(s => s.isActive);
-        if (active) {
-          setMatchSeasonId(prev => prev || active.id);
-        }
-      },
-      (err) => console.error("Firestore seasons error:", err)
-    );
-
-    // 3. Games Listener (Immagini e dati custom dei giochi)
-    const unsubGames = onSnapshot(gamesRef,
-      (snapshot) => {
-        const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        setGamesMetaData(fetched);
-      },
-      (err) => console.error("Firestore games error:", err)
-    );
-
-    return () => {
-      unsubMatches();
-      unsubSeasons();
-      unsubGames();
-    };
-  }, [user]);
-
-  // Helper Notifiche
-  const showSuccess = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(null), 4000);
+  // Aggiungi Giocatore alla modale partita
+  const addPlayerRow = () => {
+    setMatchPlayers([...matchPlayers, { name: '', score: '', isWinner: false }]);
   };
 
-  // Combina preset games con metadata da Firestore (es. Immagini personalizzate)
-  const combinedGamesMap = useMemo(() => {
-    const map = {};
-
-    // 1. Inserisci preset
-    PRESET_GAMES.forEach(g => {
-      map[g.name.toLowerCase()] = { ...g };
-    });
-
-    // 2. Override o aggiungi metadata da Cloud
-    gamesMetaData.forEach(g => {
-      const key = (g.name || '').toLowerCase();
-      if (key) {
-        map[key] = {
-          ...(map[key] || { id: g.id, name: g.name, icon: '🎲' }),
-          ...g
-        };
-      }
-    });
-
-    // 3. Aggiungi anche giochi presenti nelle partite ma non in memoria
-    matches.forEach(m => {
-      if (m.game && !map[m.game.toLowerCase()]) {
-        map[m.game.toLowerCase()] = {
-          id: m.game.toLowerCase().replace(/\s+/g, '-'),
-          name: m.game,
-          icon: '🎲',
-          imageUrl: ''
-        };
-      }
-    });
-
-    return map;
-  }, [gamesMetaData, matches]);
-
-  const getGameInfo = (gName) => {
-    if (!gName) return { name: 'Sconosciuto', icon: '🎲', imageUrl: '' };
-    return combinedGamesMap[gName.toLowerCase()] || { name: gName, icon: '🎲', imageUrl: '' };
+  const updatePlayerRow = (index, field, value) => {
+    const updated = [...matchPlayers];
+    updated[index][field] = value;
+    setMatchPlayers(updated);
   };
 
-  // --- GESTIONE STAGIONI ---
-  const handleCreateSeason = async (e) => {
+  const removePlayerRow = (index) => {
+    setMatchPlayers(matchPlayers.filter((_, i) => i !== index));
+  };
+
+  // Salva Partita
+  const handleSaveMatch = async (e) => {
     e.preventDefault();
-    if (!newSeasonName.trim()) return;
+    if (!newMatchGame || matchPlayers.length === 0) return;
 
     try {
-      setIsCreatingSeason(true);
-      const seasonsRef = collection(db, 'artifacts', appId, 'public', 'data', 'seasons');
-      
-      const newDoc = await addDoc(seasonsRef, {
-        name: newSeasonName.trim(),
-        isActive: seasons.length === 0, // Se è la prima, rendila attiva
+      await addDoc(collection(db, 'matches'), {
+        game: newMatchGame,
+        date: newMatchDate,
+        season: newMatchSeason || 'Generale',
+        notes: newMatchNotes,
+        players: matchPlayers.map(p => ({ ...p, score: Number(p.score) || 0 })),
         createdAt: new Date().toISOString()
       });
 
-      if (seasons.length === 0) {
-        setMatchSeasonId(newDoc.id);
+      // Se il gioco non è ancora nella lista, lo aggiungiamo in automatico
+      if (!games.some(g => g.name.toLowerCase() === newMatchGame.toLowerCase())) {
+        await addDoc(collection(db, 'games'), { name: newMatchGame, image: '' });
       }
 
-      setNewSeasonName('');
-      showSuccess("🏆 Nuova Stagione creata con successo!");
+      setShowNewMatchModal(false);
+      setMatchPlayers([{ name: '', score: '', isWinner: false }]);
+      setNewMatchNotes('');
     } catch (err) {
-      console.error(err);
-      setErrorMsg("Impossibile creare la stagione.");
-    } finally {
-      setIsCreatingSeason(false);
+      console.error("Errore salvataggio partita:", err);
+      alert("Errore durante il salvataggio della partita.");
     }
   };
 
-  const handleSetActiveSeason = async (seasonId) => {
-    try {
-      // Imposta tutte le altre come non attive e questa come attiva
-      for (const s of seasons) {
-        const seasonDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'seasons', s.id);
-        await setDoc(seasonDocRef, { ...s, isActive: s.id === seasonId }, { merge: true });
-      }
-      setMatchSeasonId(seasonId);
-      showSuccess("Stagione attiva aggiornata!");
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Errore nell'aggiornamento della stagione attiva.");
-    }
-  };
-
-  // --- GESTIONE IMMAGINE GIOCO ---
-  const handleSaveGameImage = async () => {
-    if (!editingGame) return;
-
-    try {
-      const gameKey = editingGame.name.toLowerCase().replace(/\s+/g, '-');
-      const gameDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameKey);
-
-      await setDoc(gameDocRef, {
-        name: editingGame.name,
-        imageUrl: editImageUrl.trim(),
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-
-      setEditingGame(null);
-      setEditImageUrl('');
-      showSuccess(`Immagine per "${editingGame.name}" aggiornata!`);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Errore nel salvataggio dell'immagine del gioco.");
-    }
-  };
-
-  // --- LOGICA FORM NUOVA PARTITA ---
-  const handleAddPlayerRow = () => {
-    if (playersInput.length < 10) {
-      setPlayersInput([...playersInput, { name: '', score: '' }]);
-    }
-  };
-
-  const handleRemovePlayerRow = (index) => {
-    if (playersInput.length > 2) {
-      setPlayersInput(playersInput.filter((_, i) => i !== index));
-    }
-  };
-
-  const handlePlayerChange = (index, field, value) => {
-    const updated = [...playersInput];
-    updated[index][field] = value;
-    setPlayersInput(updated);
-  };
-
-  const finalGameName = gameName === 'CUSTOM' ? gameCustomInput.trim() : gameName;
-
-  const calculatedWinner = useMemo(() => {
-    const valid = playersInput.filter(p => p.name.trim() !== '' && p.score !== '');
-    if (valid.length === 0) return '';
-    const sorted = [...valid].sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
-    return sorted[0] ? sorted[0].name.trim() : '';
-  }, [playersInput]);
-
-  const handleSubmitMatch = async (e) => {
+  // Salva o Modifica Gioco
+  const handleSaveGame = async (e) => {
     e.preventDefault();
-    if (!user) return setErrorMsg("Connessione cloud non pronta.");
-    if (!finalGameName) return setErrorMsg("Seleziona o inserisci il nome del gioco.");
-
-    const validPlayers = playersInput
-      .filter(p => p.name.trim() !== '')
-      .map(p => ({ name: p.name.trim(), score: parseFloat(p.score) || 0 }));
-
-    if (validPlayers.length < 2) return setErrorMsg("Inserisci almeno 2 giocatori validi.");
-
-    const winner = useManualWinner ? manualWinner.trim() : calculatedWinner;
-    if (!winner) return setErrorMsg("Specificare un vincitore.");
-
-    setIsSubmitting(true);
+    if (!newGameName) return;
 
     try {
-      const matchesRef = collection(db, 'artifacts', appId, 'public', 'data', 'matches');
-      
-      await addDoc(matchesRef, {
-        game: finalGameName,
-        date: matchDate,
-        players: validPlayers,
-        winner: winner,
-        notes: notes.trim(),
-        seasonId: matchSeasonId || 'DEFAULT',
-        createdAt: new Date().toISOString(),
-        createdBy: user.uid
-      });
-
-      // Salva anche il gioco nella collezione giochi se è custom per non perderlo
-      const gameKey = finalGameName.toLowerCase().replace(/\s+/g, '-');
-      const gameDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameKey);
-      await setDoc(gameDocRef, { name: finalGameName }, { merge: true });
-
-      // Reset
-      setGameName('');
-      setGameCustomInput('');
-      setMatchDate(new Date().toISOString().split('T')[0]);
-      setPlayersInput([{ name: '', score: '' }, { name: '', score: '' }]);
-      setNotes('');
-      setUseManualWinner(false);
-      setManualWinner('');
-
-      showSuccess("🎉 Partita salvata con successo!");
-      setActiveTab('dashboard');
+      if (editingGame) {
+        await updateDoc(doc(db, 'games', editingGame.id), {
+          name: newGameName,
+          image: newGameImage
+        });
+      } else {
+        if (!games.some(g => g.name.toLowerCase() === newGameName.toLowerCase())) {
+          await addDoc(collection(db, 'games'), { name: newGameName, image: newGameImage });
+        }
+      }
+      setShowNewGameModal(false);
+      setNewGameName('');
+      setNewGameImage('');
+      setEditingGame(null);
     } catch (err) {
-      console.error(err);
-      setErrorMsg("Errore nel salvataggio della partita.");
-    } finally {
-      setIsSubmitting(false);
+      console.error("Errore salvataggio gioco:", err);
     }
   };
 
-  const handleDeleteMatch = async (matchId) => {
-    if (!window.confirm("Sei sicuro di voler eliminare questa partita dalla cronologia condivisa?")) return;
+  // Salva Stagione
+  const handleSaveSeason = async (e) => {
+    e.preventDefault();
+    if (!newSeasonName) return;
     try {
-      const matchDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'matches', matchId);
-      await deleteDoc(matchDocRef);
-      showSuccess("Partita eliminata dal Cloud.");
+      await addDoc(collection(db, 'seasons'), { name: newSeasonName });
+      setShowNewSeasonModal(false);
+      setNewSeasonName('');
     } catch (err) {
-      console.error(err);
-      setErrorMsg("Errore durante l'eliminazione.");
+      console.error("Errore salvataggio stagione:", err);
     }
   };
 
-  // --- FILTRAGGIO PARTITE IN BASE ALLA STAGIONE SELEZIONATA ---
-  const seasonFilteredMatches = useMemo(() => {
-    if (selectedSeasonId === 'ALL') return matches;
-    return matches.filter(m => m.seasonId === selectedSeasonId);
-  }, [matches, selectedSeasonId]);
-
-  // Classifica Giocatori (Calcolata sulla stagione selezionata)
-  const playerStats = useMemo(() => {
-    const stats = {};
-
-    seasonFilteredMatches.forEach(m => {
-      if (!m.players || !Array.isArray(m.players)) return;
-
-      m.players.forEach(p => {
-        if (!stats[p.name]) {
-          stats[p.name] = {
-            name: p.name,
-            played: 0,
-            wins: 0,
-            totalScore: 0,
-            highestScore: -Infinity
-          };
-        }
-
-        stats[p.name].played += 1;
-        stats[p.name].totalScore += (p.score || 0);
-        if ((p.score || 0) > stats[p.name].highestScore) {
-          stats[p.name].highestScore = p.score;
-        }
-
-        if (m.winner && m.winner.toLowerCase() === p.name.toLowerCase()) {
-          stats[p.name].wins += 1;
-        }
-      });
-    });
-
-    return Object.values(stats)
-      .map(s => ({
-        ...s,
-        winRate: s.played > 0 ? ((s.wins / s.played) * 100).toFixed(1) : 0,
-        avgScore: s.played > 0 ? (s.totalScore / s.played).toFixed(1) : 0
-      }))
-      .sort((a, b) => b.wins - a.wins || parseFloat(b.winRate) - parseFloat(a.winRate));
-  }, [seasonFilteredMatches]);
-
-  // Statistiche Giochi (Calcolata sulla stagione selezionata)
-  const gameStats = useMemo(() => {
-    const stats = {};
-
-    seasonFilteredMatches.forEach(m => {
-      if (!m.game) return;
-      if (!stats[m.game]) {
-        stats[m.game] = {
-          game: m.game,
-          totalMatches: 0,
-          winnersCount: {}
-        };
-      }
-
-      stats[m.game].totalMatches += 1;
-      if (m.winner) {
-        stats[m.game].winnersCount[m.winner] = (stats[m.game].winnersCount[m.winner] || 0) + 1;
-      }
-    });
-
-    return Object.values(stats).map(g => {
-      let topWinner = 'Nessuno';
-      let maxWins = 0;
-      Object.entries(g.winnersCount).forEach(([wName, count]) => {
-        if (count > maxWins) {
-          maxWins = count;
-          topWinner = wName;
-        }
-      });
-
-      return {
-        ...g,
-        topWinner,
-        topWinnerWins: maxWins
-      };
-    }).sort((a, b) => b.totalMatches - a.totalMatches);
-  }, [seasonFilteredMatches]);
-
-  // Filtraggio Cronologia (Stagione + Gioco + Giocatore)
-  const filteredHistoryMatches = useMemo(() => {
-    return seasonFilteredMatches.filter(m => {
-      const matchGame = historyGameFilter === 'ALL' || m.game === historyGameFilter;
-      const matchPlayer = historyPlayerFilter === 'ALL' || (m.players && m.players.some(p => p.name === historyPlayerFilter));
-      return matchGame && matchPlayer;
-    });
-  }, [seasonFilteredMatches, historyGameFilter, historyPlayerFilter]);
-
-  const allUniquePlayers = useMemo(() => {
-    const set = new Set();
-    matches.forEach(m => m.players?.forEach(p => set.add(p.name)));
-    return Array.from(set);
-  }, [matches]);
-
-  const allUniqueGames = useMemo(() => {
-    const set = new Set();
-    matches.forEach(m => m.game && set.add(m.game));
-    return Array.from(set);
-  }, [matches]);
-
-  // Componente per Immagine di Copertina del Gioco con Fallback
-  const GameImageCover = ({ gameName, className = "w-12 h-12 rounded-xl" }) => {
-    const info = getGameInfo(gameName);
-    const [imgError, setImgError] = useState(false);
-
-    if (info.imageUrl && !imgError) {
-      return (
-        <img
-          src={info.imageUrl}
-          alt={info.name}
-          onError={() => setImgError(true)}
-          className={`${className} object-cover shadow-md`}
-        />
-      );
+  const handleDeleteMatch = async (id) => {
+    if (window.confirm("Vuoi davvero eliminare questa partita?")) {
+      await deleteDoc(doc(db, 'matches', id));
     }
-
-    return (
-      <div className={`${className} bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center shrink-0`}>
-        <span className="text-xl">{info.icon || '🎲'}</span>
-      </div>
-    );
   };
+
+  // Filtra partite per stagione selezionata
+  const filteredMatches = selectedSeason === 'all' 
+    ? matches 
+    : matches.filter(m => m.season === selectedSeason);
+
+  // Calcolo Classifiche
+  const statsMap = {};
+  filteredMatches.forEach(m => {
+    m.players?.forEach(p => {
+      if (!p.name) return;
+      if (!statsMap[p.name]) {
+        statsMap[p.name] = { name: p.name, played: 0, wins: 0, totalScore: 0 };
+      }
+      statsMap[p.name].played += 1;
+      statsMap[p.name].totalScore += Number(p.score) || 0;
+      if (p.isWinner) statsMap[p.name].wins += 1;
+    });
+  });
+
+  const leaderboard = Object.values(statsMap).sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    return (b.wins / (b.played || 1)) - (a.wins / (a.played || 1));
+  });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* HEADER / NAVBAR */}
-      <header className="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="p-2.5 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-xl shadow-lg shadow-orange-500/20 text-slate-950">
-              <Dices className="w-6 h-6 stroke-[2.5]" />
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-12">
+      {/* Header */}
+      <header className="bg-slate-800 border-b border-slate-700 shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-md">
+              <Trophy size={28} />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-amber-200 via-orange-300 to-amber-500 bg-clip-text text-transparent">
-                BoardGame Tracker
-              </h1>
-              <p className="text-xs text-slate-400">Database & Leghe Condivise</p>
+              <h1 className="text-2xl font-black tracking-tight text-white">BoardGame Tracker</h1>
+              <p className="text-xs text-indigo-400 font-medium">Gestione Partite & Leghe da Tavolo</p>
             </div>
           </div>
 
-          {/* STATUS CLOUD & SELETTORE STAGIONE */}
-          <div className="flex items-center space-x-3 flex-wrap">
-            <div className="flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700">
-              {loading ? (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  <span className="text-amber-400 font-medium">Sincro Cloud...</span>
-                </>
-              ) : (
-                <>
-                  <Cloud className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400 font-medium">Cloud Attivo</span>
-                </>
-              )}
-            </div>
-
-            {/* SELETTORE STAGIONE GLOBALE */}
-            <div className="flex items-center space-x-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-full text-xs font-semibold">
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <select
-                value={selectedSeasonId}
-                onChange={(e) => setSelectedSeasonId(e.target.value)}
-                className="bg-transparent text-amber-300 focus:outline-none cursor-pointer"
-              >
-                <option value="ALL" className="bg-slate-900 text-slate-100">🏆 Tutte le Stagioni</option>
-                {seasons.map(s => (
-                  <option key={s.id} value={s.id} className="bg-slate-900 text-slate-100">
-                    {s.name} {s.isActive ? '(Attiva)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Selettore Stagione */}
+          <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-700">
+            <Calendar size={18} className="text-indigo-400" />
+            <select 
+              value={selectedSeason} 
+              onChange={(e) => setSelectedSeason(e.target.value)}
+              className="bg-transparent text-sm font-semibold focus:outline-none text-white cursor-pointer"
+            >
+              {seasons.map(s => (
+                <option key={s.id} value={s.name} className="bg-slate-800">{s.name}</option>
+              ))}
+            </select>
           </div>
-
-          {/* NAV BUTTONS */}
-          <nav className="flex items-center space-x-1 sm:space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === 'dashboard'
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Trophy className="w-4 h-4" />
-              <span>Classifica</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('addMatch')}
-              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === 'addMatch'
-                  ? 'bg-amber-500 text-slate-950 font-semibold shadow-md shadow-amber-500/20'
-                  : 'bg-amber-600/20 text-amber-300 border border-amber-500/30 hover:bg-amber-600/30'
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nuova Partita</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('games')}
-              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === 'games'
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Gamepad2 className="w-4 h-4" />
-              <span>Giochi</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('seasons')}
-              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === 'seasons'
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Stagioni</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === 'history'
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>Cronologia</span>
-            </button>
-          </nav>
         </div>
       </header>
 
-      {/* NOTIFICHE */}
-      <div className="max-w-6xl mx-auto px-4 pt-4 w-full">
-        {errorMsg && (
-          <div className="mb-4 p-4 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-200 flex items-center justify-between text-sm shadow-lg">
-            <div className="flex items-center space-x-2">
-              <Info className="w-5 h-5 text-rose-400 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-            <button onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-200 font-bold ml-2">✕</button>
+      {/* Notifiche Database */}
+      {dbError && (
+        <div className="max-w-6xl mx-auto px-4 mt-4">
+          <div className="bg-red-900/40 border border-red-700 p-4 rounded-xl flex items-center gap-3 text-red-200">
+            <AlertCircle size={24} className="text-red-400 shrink-0" />
+            <p className="text-sm">Errore di connessione a Firebase. Verifica la configurazione nel codice.</p>
           </div>
-        )}
+        </div>
+      )}
 
-        {successMsg && (
-          <div className="mb-4 p-4 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-200 flex items-center justify-between text-sm shadow-lg">
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-            <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-emerald-200 font-bold ml-2">✕</button>
+      {/* Navigazione */}
+      <div className="max-w-6xl mx-auto px-4 mt-6">
+        <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-4">
+          <button 
+            onClick={() => setActiveTab('classifica')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${activeTab === 'classifica' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+          >
+            <Trophy size={18} /> Classifica
+          </button>
+          <button 
+            onClick={() => setActiveTab('giochi')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${activeTab === 'giochi' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+          >
+            <Gamepad2 size={18} /> Giochi & Copertine
+          </button>
+          <button 
+            onClick={() => setActiveTab('stagioni')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${activeTab === 'stagioni' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+          >
+            <Calendar size={18} /> Stagioni
+          </button>
+          <button 
+            onClick={() => setActiveTab('cronologia')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${activeTab === 'cronologia' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+          >
+            <Clock size={18} /> Cronologia Partite
+          </button>
+
+          <div className="ml-auto flex gap-2">
+            <button 
+              onClick={() => setShowNewMatchModal(true)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all"
+            >
+              <Plus size={18} /> Registra Partita
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* MAIN CONTAINER */}
-      <main className="max-w-6xl mx-auto px-4 py-4 flex-grow w-full">
-        {/* ================= SEZIONE DASHBOARD / CLASSIFICA ================= */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* INDICATORE STAGIONE */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400 font-medium">Stagione Attualmente Visualizzata</span>
-                  <h3 className="text-base font-bold text-amber-300">
-                    {selectedSeasonId === 'ALL' 
-                      ? 'Storico Globale (Tutte le stagioni)' 
-                      : (seasons.find(s => s.id === selectedSeasonId)?.name || 'Stagione Selezionata')}
-                  </h3>
-                </div>
-              </div>
-            </div>
-
-            {/* STATS RAPIDE */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
-                <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
-                  <Dices className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">Partite Giocate</p>
-                  <p className="text-2xl font-bold text-slate-100">{seasonFilteredMatches.length}</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
-                <div className="p-3 bg-orange-500/10 text-orange-400 rounded-xl">
-                  <Gamepad2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">Giochi Giocati</p>
-                  <p className="text-2xl font-bold text-slate-100">{gameStats.length}</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
-                <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                  <Users className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">Giocatori</p>
-                  <p className="text-2xl font-bold text-slate-100">{playerStats.length}</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
-                <div className="p-3 bg-purple-500/10 text-purple-400 rounded-xl">
-                  <Award className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">Primo in Classifica</p>
-                  <p className="text-lg font-bold text-amber-400 truncate">
-                    {playerStats[0] ? playerStats[0].name : '-'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* PODIO TOP 3 */}
-            {playerStats.length >= 3 && (
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
-                <h2 className="text-lg font-bold text-slate-200 mb-6 flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-amber-400" />
-                  <span>Podio dei Campioni</span>
-                </h2>
-                <div className="grid grid-cols-3 gap-3 items-end pt-4">
-                  {/* Segundo */}
-                  <div className="flex flex-col items-center">
-                    <div className="relative mb-2">
-                      <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-400 flex items-center justify-center font-bold text-lg text-slate-300">
-                        {playerStats[1].name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="absolute -bottom-2 -right-1 bg-slate-400 text-slate-950 rounded-full p-1 shadow">
-                        <Medal className="w-4 h-4" />
-                      </div>
-                    </div>
-                    <span className="font-bold text-slate-200 text-sm text-center truncate w-full">{playerStats[1].name}</span>
-                    <span className="text-xs text-slate-400">{playerStats[1].wins} vittorie</span>
-                    <div className="w-full bg-slate-800/80 rounded-t-xl h-24 mt-3 flex items-center justify-center text-slate-400 font-bold text-xl border-t-2 border-slate-400">
-                      2
-                    </div>
+      {/* Contenuto Principale */}
+      <main className="max-w-6xl mx-auto px-4 mt-6">
+        {loading ? (
+          <div className="text-center py-20 text-slate-400">Caricamento dati dal cloud in corso...</div>
+        ) : (
+          <>
+            {/* TAB CLASSIFICA */}
+            {activeTab === 'classifica' && (
+              <div className="space-y-6">
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
+                  <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                    <h2 className="font-bold text-lg flex items-center gap-2 text-white">
+                      <Trophy className="text-amber-400" size={20} /> Classifica Giocatori ({selectedSeason})
+                    </h2>
                   </div>
-
-                  {/* Primero */}
-                  <div className="flex flex-col items-center">
-                    <div className="relative mb-2">
-                      <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center font-bold text-xl text-amber-300 shadow-lg shadow-amber-500/20">
-                        {playerStats[0].name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="absolute -bottom-2 -right-1 bg-amber-400 text-slate-950 rounded-full p-1 shadow">
-                        <Trophy className="w-4 h-4 fill-slate-950" />
-                      </div>
-                    </div>
-                    <span className="font-bold text-amber-300 text-base text-center truncate w-full">{playerStats[0].name}</span>
-                    <span className="text-xs text-amber-400/80 font-medium">{playerStats[0].wins} vittorie</span>
-                    <div className="w-full bg-gradient-to-t from-amber-600/30 to-amber-500/10 rounded-t-xl h-36 mt-3 flex items-center justify-center text-amber-400 font-extrabold text-2xl border-t-2 border-amber-400">
-                      1
-                    </div>
-                  </div>
-
-                  {/* Tercero */}
-                  <div className="flex flex-col items-center">
-                    <div className="relative mb-2">
-                      <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-amber-700 flex items-center justify-center font-bold text-lg text-amber-600">
-                        {playerStats[2].name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="absolute -bottom-2 -right-1 bg-amber-700 text-slate-100 rounded-full p-1 shadow">
-                        <Medal className="w-4 h-4" />
-                      </div>
-                    </div>
-                    <span className="font-bold text-slate-200 text-sm text-center truncate w-full">{playerStats[2].name}</span>
-                    <span className="text-xs text-slate-400">{playerStats[2].wins} vittorie</span>
-                    <div className="w-full bg-slate-800/80 rounded-t-xl h-18 mt-3 flex items-center justify-center text-amber-700 font-bold text-xl border-t-2 border-amber-700">
-                      3
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TABELLA CLASSIFICA */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl">
-              <h2 className="text-lg font-bold text-slate-200 mb-4 flex items-center space-x-2">
-                <Trophy className="w-5 h-5 text-amber-400" />
-                <span>Classifica Giocatori</span>
-              </h2>
-
-              {playerStats.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 space-y-3">
-                  <Dices className="w-12 h-12 mx-auto stroke-1 opacity-50 text-slate-500" />
-                  <p>Nessuna partita registrata per questa stagione.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-300">
-                    <thead className="text-xs uppercase bg-slate-800/50 text-slate-400 border-b border-slate-800">
-                      <tr>
-                        <th className="py-3 px-4 rounded-l-xl">Pos.</th>
-                        <th className="py-3 px-4">Giocatore</th>
-                        <th className="py-3 px-4 text-center">Vittorie</th>
-                        <th className="py-3 px-4 text-center">Partite</th>
-                        <th className="py-3 px-4 text-center">% Vittorie</th>
-                        <th className="py-3 px-4 text-right rounded-r-xl">Punt. Medio</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/50">
-                      {playerStats.map((p, idx) => (
-                        <tr key={p.name} className="hover:bg-slate-800/30 transition">
-                          <td className="py-4 px-4 font-bold">
-                            {idx === 0 && <span className="text-amber-400">🥇 1°</span>}
-                            {idx === 1 && <span className="text-slate-300">🥈 2°</span>}
-                            {idx === 2 && <span className="text-amber-700">🥉 3°</span>}
-                            {idx > 2 && <span className="text-slate-500 px-2">{idx + 1}°</span>}
-                          </td>
-                          <td className="py-4 px-4 font-semibold text-slate-100 flex items-center space-x-2">
-                            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-amber-400">
-                              {p.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span>{p.name}</span>
-                          </td>
-                          <td className="py-4 px-4 text-center">
-                            <span className="inline-block px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
-                              {p.wins}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-center font-medium text-slate-300">{p.played}</td>
-                          <td className="py-4 px-4 text-center">
-                            <span className="font-semibold">{p.winRate}%</span>
-                          </td>
-                          <td className="py-4 px-4 text-right font-medium text-slate-300">{p.avgScore}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ================= SEZIONE GIOCHI E GESTIONE IMMAGINI ================= */}
-        {activeTab === 'games' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center space-x-2">
-                  <Gamepad2 className="w-6 h-6 text-amber-400" />
-                  <span>Libreria Giochi & Copertine</span>
-                </h2>
-                <p className="text-xs text-slate-400">Gestisci o modifica l'URL dell'immagine di ciascun gioco</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.values(combinedGamesMap).map(g => {
-                const isEditing = editingGame?.name === g.name;
-                const stats = gameStats.find(s => s.game.toLowerCase() === g.name.toLowerCase());
-
-                return (
-                  <div key={g.name} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition flex flex-col justify-between space-y-4">
-                    <div className="flex items-start space-x-4">
-                      <GameImageCover gameName={g.name} className="w-16 h-16 rounded-xl shrink-0" />
-                      <div className="flex-grow min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-slate-100 text-base truncate">{g.name}</h3>
-                          <button
-                            onClick={() => {
-                              setEditingGame(g);
-                              setEditImageUrl(g.imageUrl || '');
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition"
-                            title="Modifica Immagine"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {stats ? `${stats.totalMatches} partite in questa stagione` : 'Nessuna partita registrata'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {stats && (
-                      <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 flex items-center justify-between text-xs">
-                        <span className="text-slate-400 flex items-center space-x-1">
-                          <Trophy className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Re del gioco:</span>
-                        </span>
-                        <span className="font-bold text-amber-300">
-                          {stats.topWinner} ({stats.topWinnerWins} vittorie)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* MODALE EDIT IMMAGINE */}
-            {editingGame && (
-              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h3 className="font-bold text-slate-100 flex items-center space-x-2">
-                      <ImageIcon className="w-5 h-5 text-amber-400" />
-                      <span>Modifica Immagine per {editingGame.name}</span>
-                    </h3>
-                    <button onClick={() => setEditingGame(null)} className="text-slate-400 hover:text-slate-200">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-2">
-                      URL Immagine (Link Diretto alla Foto)
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://esempio.com/immagine.jpg"
-                      value={editImageUrl}
-                      onChange={(e) => setEditImageUrl(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  {editImageUrl && (
-                    <div className="space-y-2">
-                      <span className="text-xs text-slate-400">Anteprima:</span>
-                      <img
-                        src={editImageUrl}
-                        alt="Preview"
-                        className="w-full h-32 object-cover rounded-xl border border-slate-800"
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
+                  {leaderboard.length === 0 ? (
+                    <div className="p-12 text-center text-slate-400">Nessuna partita registrata in questa stagione. Inizia aggiungendone una!</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                            <th className="py-3 px-6">Pos</th>
+                            <th className="py-3 px-6">Giocatore</th>
+                            <th className="py-3 px-6 text-center">Partite</th>
+                            <th className="py-3 px-6 text-center">Vittorie</th>
+                            <th className="py-3 px-6 text-center">% Vittorie</th>
+                            <th className="py-3 px-6 text-right">Punti Totali</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/50 text-sm">
+                          {leaderboard.map((item, idx) => {
+                            const winRate = item.played > 0 ? ((item.wins / item.played) * 100).toFixed(1) : 0;
+                            return (
+                              <tr key={item.name} className="hover:bg-slate-750 transition-colors">
+                                <td className="py-4 px-6 font-black">
+                                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                                </td>
+                                <td className="py-4 px-6 font-bold text-white flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                                    {item.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  {item.name}
+                                </td>
+                                <td className="py-4 px-6 text-center text-slate-300">{item.played}</td>
+                                <td className="py-4 px-6 text-center font-semibold text-emerald-400">{item.wins}</td>
+                                <td className="py-4 px-6 text-center font-medium text-indigo-300">{winRate}%</td>
+                                <td className="py-4 px-6 text-right font-bold text-amber-300">{item.totalScore}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
-
-                  <div className="flex items-center space-x-2 pt-2">
-                    <button
-                      onClick={handleSaveGameImage}
-                      className="flex-1 py-2.5 bg-amber-500 text-slate-950 font-bold rounded-xl hover:bg-amber-400 transition text-sm"
-                    >
-                      Salva Immagine
-                    </button>
-                    <button
-                      onClick={() => setEditingGame(null)}
-                      className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 transition text-sm"
-                    >
-                      Annulla
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* ================= SEZIONE GESTIONE STAGIONI ================= */}
-        {activeTab === 'seasons' && (
-          <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
-                <Layers className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-100">Gestione Stagioni & Leghe</h2>
-                <p className="text-xs text-slate-400">Crea nuove stagioni e seleziona la lega attualmente in corso</p>
-              </div>
-            </div>
-
-            {/* FORM CREA STAGIONE */}
-            <form onSubmit={handleCreateSeason} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
-              <h3 className="text-sm font-bold text-slate-200">Crea Nuova Stagione</h3>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder="Es. Stagione Autunno 2026, Lega di Natale..."
-                  value={newSeasonName}
-                  onChange={(e) => setNewSeasonName(e.target.value)}
-                  className="flex-grow bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                />
-                <button
-                  type="submit"
-                  disabled={isCreatingSeason}
-                  className="px-5 py-2.5 bg-amber-500 text-slate-950 font-bold rounded-xl hover:bg-amber-400 transition text-sm shrink-0 flex items-center space-x-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Crea</span>
-                </button>
-              </div>
-            </form>
-
-            {/* ELENCO STAGIONI */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-3">
-              <h3 className="text-sm font-bold text-slate-200 mb-3">Elenco Stagioni Registrate</h3>
-
-              {seasons.length === 0 ? (
-                <p className="text-xs text-slate-500">Nessuna stagione ancora creata. Tutte le partite sono nello storico globale.</p>
-              ) : (
-                <div className="space-y-2">
-                  {seasons.map(s => (
-                    <div key={s.id} className="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
-                      <div className="flex items-center space-x-3">
-                        <Layers className="w-4 h-4 text-amber-400" />
-                        <div>
-                          <span className="font-semibold text-slate-100 text-sm">{s.name}</span>
-                          {s.isActive && (
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
-                              ATTIVA AL MOMENTO
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {!s.isActive && (
-                        <button
-                          onClick={() => handleSetActiveSeason(s.id)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold rounded-lg transition"
-                        >
-                          Imposta come Attiva
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ================= SEZIONE FORM NUOVA PARTITA ================= */}
-        {activeTab === 'addMatch' && (
-          <div className="max-w-2xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-800">
-              <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
-                <Plus className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-100">Registra Nuova Partita</h2>
-                <p className="text-xs text-slate-400">Assegnata automaticamente alla stagione selezionata</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmitMatch} className="space-y-6">
-              {/* STAGIONE ASSOCCIATA */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-2 flex items-center space-x-1.5">
-                  <Layers className="w-4 h-4 text-amber-400" />
-                  <span>Stagione / Lega della Partita</span>
-                </label>
-                <select
-                  value={matchSeasonId}
-                  onChange={(e) => setMatchSeasonId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                >
-                  <option value="DEFAULT">Generale (Nessuna Stagione)</option>
-                  {seasons.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} {s.isActive ? '(Attiva Ora)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* SELEZIONE GIOCO CON ANTEPRIMA COPERTINE */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Nome del Gioco *
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-3">
-                  {Object.values(combinedGamesMap).slice(0, 9).map(preset => (
-                    <button
-                      type="button"
-                      key={preset.name}
-                      onClick={() => {
-                        setGameName(preset.name);
-                        setGameCustomInput('');
-                      }}
-                      className={`p-2 rounded-xl border text-xs font-medium text-left flex items-center space-x-2 transition ${
-                        gameName === preset.name
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-semibold'
-                          : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      <GameImageCover gameName={preset.name} className="w-7 h-7 rounded-lg shrink-0" />
-                      <span className="truncate">{preset.name}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Oppure scrivi un altro nome del gioco..."
-                  value={gameName === 'CUSTOM' ? gameCustomInput : (combinedGamesMap[gameName.toLowerCase()] ? '' : gameName)}
-                  onChange={(e) => {
-                    setGameName('CUSTOM');
-                    setGameCustomInput(e.target.value);
-                  }}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              {/* DATA PARTITA */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2 flex items-center space-x-2">
-                  <Calendar className="w-4 h-4 text-amber-400" />
-                  <span>Data della Partita *</span>
-                </label>
-                <input
-                  type="date"
-                  value={matchDate}
-                  onChange={(e) => setMatchDate(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-amber-500 text-sm"
-                  required
-                />
-              </div>
-
-              {/* GIOCATORI E PUNTEGGI */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-slate-300 flex items-center space-x-2">
-                    <Users className="w-4 h-4 text-amber-400" />
-                    <span>Partecipanti e Punteggi *</span>
-                  </label>
-                </div>
-
-                <div className="space-y-3">
-                  {playersInput.map((player, idx) => (
-                    <div key={idx} className="flex items-center space-x-2">
-                      <div className="flex-grow grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder={`Giocatore ${idx + 1}`}
-                          value={player.name}
-                          onChange={(e) => handlePlayerChange(idx, 'name', e.target.value)}
-                          className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Punti"
-                          value={player.score}
-                          onChange={(e) => handlePlayerChange(idx, 'score', e.target.value)}
-                          className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                      {playersInput.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePlayerRow(idx)}
-                          className="p-2.5 text-slate-500 hover:text-rose-400 rounded-xl transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddPlayerRow}
-                  className="mt-3 inline-flex items-center space-x-2 text-xs font-semibold text-amber-400 hover:text-amber-300 py-1.5 px-3 rounded-lg bg-amber-500/10 border border-amber-500/20"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Aggiungi Giocatore</span>
-                </button>
-              </div>
-
-              {/* VINCITORE */}
-              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-300">Vincitore Calcolato:</span>
-                  <button
-                    type="button"
-                    onClick={() => setUseManualWinner(!useManualWinner)}
-                    className="text-xs text-amber-400 underline"
+            {/* TAB GIOCHI */}
+            {activeTab === 'giochi' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-white">Libreria Giochi & Copertine</h2>
+                  <button 
+                    onClick={() => { setEditingGame(null); setNewGameName(''); setNewGameImage(''); setShowNewGameModal(true); }}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-md"
                   >
-                    {useManualWinner ? "Automatico" : "Manuale"}
+                    <Plus size={16} /> Aggiungi Gioco
                   </button>
                 </div>
 
-                {!useManualWinner ? (
-                  <div className="flex items-center space-x-2 text-amber-300 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20 text-sm font-medium">
-                    <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>{calculatedWinner || "Inserisci i punteggi per determinare il vincitore"}</span>
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="Nome vincitore manuale..."
-                    value={manualWinner}
-                    onChange={(e) => setManualWinner(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm"
-                  />
-                )}
-              </div>
-
-              {/* NOTE */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2 flex items-center space-x-2">
-                  <FileText className="w-4 h-4 text-amber-400" />
-                  <span>Note sulla Partita</span>
-                </label>
-                <textarea
-                  placeholder="Es. Strategia usata, momento divertente..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 px-6 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:from-amber-400 transition"
-              >
-                {isSubmitting ? 'Salvataggio...' : 'Salva e Sincronizza Partita'}
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* ================= SEZIONE CRONOLOGIA ================= */}
-        {activeTab === 'history' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-slate-100 flex items-center space-x-2">
-                <Clock className="w-6 h-6 text-amber-400" />
-                <span>Cronologia Partite</span>
-              </h2>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-                  <Filter className="w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={historyGameFilter}
-                    onChange={(e) => setHistoryGameFilter(e.target.value)}
-                    className="bg-transparent text-slate-200 focus:outline-none"
-                  >
-                    <option value="ALL">Tutti i Giochi</option>
-                    {allUniqueGames.map(g => <option key={g} value={g} className="bg-slate-900">{g}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={historyPlayerFilter}
-                    onChange={(e) => setHistoryPlayerFilter(e.target.value)}
-                    className="bg-transparent text-slate-200 focus:outline-none"
-                  >
-                    <option value="ALL">Tutti i Giocatori</option>
-                    {allUniquePlayers.map(p => <option key={p} value={p} className="bg-slate-900">{p}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {filteredHistoryMatches.length === 0 ? (
-              <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-12 text-center text-slate-400 space-y-3">
-                <Clock className="w-12 h-12 mx-auto stroke-1 opacity-50 text-slate-500" />
-                <p>Nessuna partita trovata in questa stagione.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredHistoryMatches.map(m => {
-                  const matchSeason = seasons.find(s => s.id === m.seasonId);
-                  return (
-                    <div key={m.id} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-slate-700/80 transition space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <GameImageCover gameName={m.game} className="w-12 h-12 rounded-xl shrink-0" />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <h3 className="font-bold text-slate-100 text-lg">{m.game}</h3>
-                              {matchSeason && (
-                                <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 text-[10px] border border-amber-500/20 font-semibold">
-                                  {matchSeason.name}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2 text-xs text-slate-400 mt-0.5">
-                              <Calendar className="w-3.5 h-3.5" />
-                              <span>{new Date(m.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {games.map(game => {
+                    const gameMatches = matches.filter(m => m.game.toLowerCase() === game.name.toLowerCase());
+                    return (
+                      <div key={game.id} className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden shadow-lg flex flex-col">
+                        <div className="h-44 bg-slate-900 relative overflow-hidden flex items-center justify-center">
+                          {game.image ? (
+                            <img src={game.image} alt={game.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Gamepad2 size={48} className="text-slate-600" />
+                          )}
+                          <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-300 border border-slate-700">
+                            {gameMatches.length} partite
                           </div>
                         </div>
-
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold">
-                            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Vincitore: {m.winner}</span>
+                        <div className="p-4 flex flex-col flex-1 justify-between gap-4">
+                          <div>
+                            <h3 className="font-bold text-lg text-white">{game.name}</h3>
                           </div>
-                          <button
-                            onClick={() => handleDeleteMatch(m.id)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition"
+                          <button 
+                            onClick={() => { setEditingGame(game); setNewGameName(game.name); setNewGameImage(game.image || ''); setShowNewGameModal(true); }}
+                            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit2 size={14} /> Modifica Copertina
                           </button>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/60">
-                        {m.players?.map((p, pIdx) => {
-                          const isWinner = m.winner && m.winner.toLowerCase() === p.name.toLowerCase();
-                          return (
-                            <div
-                              key={pIdx}
-                              className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
-                                isWinner 
-                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-200' 
-                                  : 'bg-slate-950/40 border-slate-800 text-slate-300'
-                              }`}
-                            >
-                              <span className="font-medium truncate mr-2">{p.name}</span>
-                              <span className="font-bold text-slate-100 px-2 py-0.5 rounded bg-slate-800">{p.score} pt</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {m.notes && (
-                        <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/60 text-xs text-slate-400 italic">
-                          "{m.notes}"
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
-          </div>
+
+            {/* TAB STAGIONI */}
+            {activeTab === 'stagioni' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-white">Stagioni & Leghe</h2>
+                  <button 
+                    onClick={() => setShowNewSeasonModal(true)}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-md"
+                  >
+                    <Plus size={16} /> Nuova Stagione
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {seasons.map(season => {
+                    if (season.id === 'all') return null;
+                    const count = matches.filter(m => m.season === season.name).length;
+                    return (
+                      <div key={season.id} className="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg flex justify-between items-center">
+                        <div>
+                          <h3 className="font-bold text-lg text-white">{season.name}</h3>
+                          <p className="text-xs text-slate-400 mt-1">{count} partite registrate</p>
+                        </div>
+                        <Calendar className="text-indigo-400" size={28} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB CRONOLOGIA */}
+            {activeTab === 'cronologia' && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-white mb-4">Cronologia Partite ({selectedSeason})</h2>
+                {filteredMatches.length === 0 ? (
+                  <div className="bg-slate-800 border border-slate-700 p-12 text-center rounded-2xl text-slate-400">Nessuna partita trovata.</div>
+                ) : (
+                  filteredMatches.map(m => (
+                    <div key={m.id} className="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-bold text-lg text-white">{m.game}</h3>
+                          <span className="bg-indigo-500/20 text-indigo-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/30">{m.season}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                          <Calendar size={14} /> {m.date}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {m.players?.map((p, i) => (
+                            <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1.5 ${p.isWinner ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-slate-900 text-slate-300 border border-slate-700'}`}>
+                              {p.isWinner && '👑'} {p.name}: <strong>{p.score}</strong> pt
+                            </span>
+                          ))}
+                        </div>
+                        {m.notes && <p className="text-xs text-slate-400 mt-2 italic">Note: "{m.notes}"</p>}
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteMatch(m.id)}
+                        className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2.5 rounded-xl transition-all self-end md:self-center"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>🎲 Board Game Tracker Cloud &bull; Leghe & Immagini Sincronizzate</span>
+      {/* MODALE NUOVA PARTITA */}
+      {showNewMatchModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-white">Registra Nuova Partita</h3>
+              <button onClick={() => setShowNewMatchModal(false)} className="text-slate-400 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveMatch} className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Nome Gioco</label>
+                <input 
+                  type="text" 
+                  list="games-list" 
+                  required
+                  placeholder="Es. Catan, Ticket to Ride..." 
+                  value={newMatchGame}
+                  onChange={(e) => setNewMatchGame(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+                <datalist id="games-list">
+                  {games.map(g => <option key={g.id} value={g.name} />)}
+                </datalist>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Data</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={newMatchDate}
+                    onChange={(e) => setNewMatchDate(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Stagione</label>
+                  <select 
+                    value={newMatchSeason}
+                    onChange={(e) => setNewMatchSeason(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="Generale">Generale</option>
+                    {seasons.filter(s => s.id !== 'all').map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase">Giocatori e Punteggi</label>
+                  <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi giocatore</button>
+                </div>
+                <div className="space-y-2">
+                  {matchPlayers.map((p, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Nome"
+                        required
+                        value={p.name}
+                        onChange={(e) => updatePlayerRow(index, 'name', e.target.value)}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="Punti"
+                        value={p.score}
+                        onChange={(e) => updatePlayerRow(index, 'score', e.target.value)}
+                        className="w-24 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                      />
+                      <label className="flex items-center gap-1 text-xs text-amber-300 font-bold cursor-pointer px-2">
+                        <input 
+                          type="checkbox"
+                          checked={p.isWinner}
+                          onChange={(e) => updatePlayerRow(index, 'isWinner', e.target.checked)}
+                          className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
+                        /> 👑 Vinto
+                      </label>
+                      {matchPlayers.length > 1 && (
+                        <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Note (Opzionale)</label>
+                <textarea 
+                  rows="2"
+                  value={newMatchNotes}
+                  onChange={(e) => setNewMatchNotes(e.target.value)}
+                  placeholder="Es. Partita decisa all'ultimo turno..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                ></textarea>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowNewMatchModal(false)} className="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600">Annulla</button>
+                <button type="submit" className="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">Salva Partita</button>
+              </div>
+            </form>
+          </div>
         </div>
-      </footer>
+      )}
+
+      {/* MODALE GIOCO / IMMAGINE */}
+      {showNewGameModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-white">{editingGame ? 'Modifica Gioco & Copertina' : 'Aggiungi Nuovo Gioco'}</h3>
+              <button onClick={() => setShowNewGameModal(false)} className="text-slate-400 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveGame} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Nome Gioco</label>
+                <input 
+                  type="text" 
+                  required
+                  disabled={!!editingGame}
+                  value={newGameName}
+                  onChange={(e) => setNewGameName(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">URL Immagine Copertina</label>
+                <input 
+                  type="url" 
+                  placeholder="https://esempio.com/copertina.jpg"
+                  value={newGameImage}
+                  onChange={(e) => setNewGameImage(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Incolla il link diretto di un'immagine dal web.</p>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowNewGameModal(false)} className="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600">Annulla</button>
+                <button type="submit" className="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">Salva Gioco</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE STAGIONE */}
+      {showNewSeasonModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-white">Nuova Stagione / Lega</h3>
+              <button onClick={() => setShowNewSeasonModal(false)} className="text-slate-400 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveSeason} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Nome Stagione</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Es. Lega Inverno 2026"
+                  value={newSeasonName}
+                  onChange={(e) => setNewSeasonName(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowNewSeasonModal(false)} className="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600">Annulla</button>
+                <button type="submit" className="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">Crea Stagione</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
