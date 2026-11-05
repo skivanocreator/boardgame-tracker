@@ -199,7 +199,6 @@ export default function BoardGameTracker() {
     }
   };
 
-  // Filtro partite per la classifica
   const filteredMatches = selectedSeason === 'all' 
     ? matches 
     : matches.filter(m => m.season === selectedSeason);
@@ -222,7 +221,6 @@ export default function BoardGameTracker() {
     return b.wins - a.wins;
   });
 
-  // Funzione per calcolare le statistiche globali (di sempre) di un giocatore specifico
   const getPlayerGlobalStats = (playerName) => {
     let played = 0;
     let wins = 0;
@@ -247,10 +245,10 @@ export default function BoardGameTracker() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-12 overflow-x-hidden selection:bg-indigo-500 selection:text-white">
       {/* Header HUD Moderno con Menu a Tre Linee */}
-      <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+      <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center gap-3">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
+            <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/20 transform hover:scale-105 transition-transform duration-300">
               <Trophy size={24} />
             </div>
             <div>
@@ -267,30 +265,30 @@ export default function BoardGameTracker() {
                 if (seasons.length > 0 && !newMatchSeason) setNewMatchSeason(seasons[0].name);
                 setShowNewMatchModal(true);
               }}
-              className="items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all hidden sm:flex"
+              className="items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 active:scale-95 transition-all hidden sm:flex"
             >
               <Plus size={16} /> Registra Partita
             </button>
 
-            {/* Pulsante Menu a Tre Linee */}
+            {/* Pulsante Menu a Tre Linee con animazione al click/hover */}
             <button 
               onClick={() => setMenuOpen(!menuOpen)}
-              className="bg-slate-800 hover:bg-slate-750 text-white p-2.5 rounded-xl border border-slate-700/60 shadow-md transition-all flex items-center justify-center"
+              className="bg-slate-800 hover:bg-slate-750 text-white p-2.5 rounded-xl border border-slate-700/60 shadow-md active:scale-95 transition-all flex items-center justify-center group"
               aria-label="Menu"
             >
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+              {menuOpen ? <X size={22} className="transform rotate-90 transition-transform duration-300" /> : <Menu size={22} className="group-hover:rotate-12 transition-transform duration-300" />}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Menu a comparsa (Drawer) */}
+      {/* Menu a comparsa (Drawer) con transizione fluida */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end" onClick={() => setMenuOpen(false)}>
-          <div className="w-80 max-w-full bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end transition-opacity duration-300" onClick={() => setMenuOpen(false)}>
+          <div className="w-80 max-w-full bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center pb-4 border-b border-slate-800">
               <h3 className="font-bold text-base text-white flex items-center gap-2">Menu di Navigazione</h3>
-              <button onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white p-1">
+              <button onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white p-1 hover:rotate-90 transition-transform duration-300">
                 <X size={20} />
               </button>
             </div>
@@ -298,7 +296,7 @@ export default function BoardGameTracker() {
             <div className="flex flex-col gap-2 py-4 flex-1">
               <button 
                 onClick={() => { setActiveTab('classifica'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === 'classifica' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'classifica' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
               >
                 <div className="flex items-center gap-3"><Trophy size={18} /> Classifica</div>
                 <ChevronRight size={16} className="text-slate-500" />
@@ -306,7 +304,7 @@ export default function BoardGameTracker() {
               
               <button 
                 onClick={() => { setActiveTab('cronologia'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === 'cronologia' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'cronologia' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
               >
                 <div className="flex items-center gap-3"><Clock size={18} /> Cronologia</div>
                 <ChevronRight size={16} className="text-slate-500" />
@@ -314,7 +312,7 @@ export default function BoardGameTracker() {
 
               <button 
                 onClick={() => { setActiveTab('giocatori'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === 'giocatori' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giocatori' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
               >
                 <div className="flex items-center gap-3"><Users size={18} /> Giocatori</div>
                 <ChevronRight size={16} className="text-slate-500" />
@@ -322,7 +320,7 @@ export default function BoardGameTracker() {
 
               <button 
                 onClick={() => { setActiveTab('stagioni'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === 'stagioni' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'stagioni' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
               >
                 <div className="flex items-center gap-3"><Calendar size={18} /> Stagioni</div>
                 <ChevronRight size={16} className="text-slate-500" />
@@ -330,7 +328,7 @@ export default function BoardGameTracker() {
 
               <button 
                 onClick={() => { setActiveTab('giochi'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === 'giochi' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giochi' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1'}`}
               >
                 <div className="flex items-center gap-3"><Gamepad2 size={18} /> Giochi</div>
                 <ChevronRight size={16} className="text-slate-500" />
@@ -344,7 +342,7 @@ export default function BoardGameTracker() {
                   setShowNewMatchModal(true);
                   setMenuOpen(false);
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20"
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
               >
                 <Plus size={18} /> Registra Partita
               </button>
@@ -362,18 +360,18 @@ export default function BoardGameTracker() {
         </div>
       )}
 
-      {/* Contenuto principale */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
+      {/* Contenuto principale con effetto animato al cambio */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 animate-in fade-in duration-300">
         {loading ? (
           <div className="text-center py-20 text-slate-500 animate-pulse font-medium text-sm">Sincronizzazione dati cloud...</div>
         ) : (
           <>
             {/* SEZIONE DETTAGLIO GIOCATORE SELEZIONATO */}
             {selectedPlayerDetail ? (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
                 <button 
                   onClick={() => setSelectedPlayerDetail(null)}
-                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all"
+                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
                 >
                   <ArrowLeft size={16} /> Torna all'elenco giocatori
                 </button>
@@ -393,19 +391,19 @@ export default function BoardGameTracker() {
                   const stats = getPlayerGlobalStats(selectedPlayerDetail.name);
                   return (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
+                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
                         <p className="text-xs text-slate-400 font-semibold uppercase">Partite Giocate</p>
                         <p className="text-2xl font-black text-white mt-1">{stats.played}</p>
                       </div>
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
+                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
                         <p className="text-xs text-slate-400 font-semibold uppercase">Vittorie Totali</p>
                         <p className="text-2xl font-black text-emerald-400 mt-1">{stats.wins}</p>
                       </div>
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
+                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
                         <p className="text-xs text-slate-400 font-semibold uppercase">% Vittorie</p>
                         <p className="text-2xl font-black text-indigo-300 mt-1">{stats.winRate}%</p>
                       </div>
-                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
+                      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg hover:border-slate-700 transition-colors">
                         <p className="text-xs text-slate-400 font-semibold uppercase">Punti Totali di Sempre</p>
                         <p className="text-2xl font-black text-amber-400 mt-1">{stats.totalScore}</p>
                       </div>
@@ -415,7 +413,7 @@ export default function BoardGameTracker() {
               </div>
             ) : (
               <>
-                {/* 1. CLASSIFICA (Prima pagina di default) */}
+                {/* 1. CLASSIFICA */}
                 {activeTab === 'classifica' && (
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
@@ -493,7 +491,7 @@ export default function BoardGameTracker() {
                       <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">Nessuna partita trovata.</div>
                     ) : (
                       matches.map(m => (
-                        <div key={m.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div key={m.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-slate-700 transition-all">
                           <div>
                             <div className="flex items-center gap-2.5">
                               <h3 className="font-bold text-sm sm:text-base text-white">{m.game}</h3>
@@ -513,7 +511,7 @@ export default function BoardGameTracker() {
                           </div>
                           <button 
                             onClick={() => handleDeleteMatch(m.id)}
-                            className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2 rounded-xl transition-all self-end md:self-center border border-red-500/20"
+                            className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2 rounded-xl active:scale-95 transition-all self-end md:self-center border border-red-500/20"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -523,7 +521,7 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 3. GIOCATORI (Cliccabili per vedere le informazioni complete) */}
+                {/* 3. GIOCATORI */}
                 {activeTab === 'giocatori' && (
                   <div className="space-y-5">
                     <div className="flex justify-between items-center">
@@ -533,7 +531,7 @@ export default function BoardGameTracker() {
                       </div>
                       <button 
                         onClick={() => setShowNewPlayerModal(true)}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20"
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
                       >
                         <UserPlus size={15} /> Aggiungi Giocatore
                       </button>
@@ -551,7 +549,7 @@ export default function BoardGameTracker() {
                             <div 
                               key={pl.id} 
                               onClick={() => setSelectedPlayerDetail(pl)}
-                              className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition-all group"
+                              className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group"
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-base group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -562,7 +560,7 @@ export default function BoardGameTracker() {
                                   <p className="text-[11px] text-slate-400 mt-0.5">{stats.played} partite • {stats.wins} vittorie</p>
                                 </div>
                               </div>
-                              <ChevronRight size={18} className="text-slate-600 group-hover:text-white transition-colors" />
+                              <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
                             </div>
                           );
                         })
@@ -578,7 +576,7 @@ export default function BoardGameTracker() {
                       <h2 className="text-lg font-bold text-white">Stagioni & Leghe</h2>
                       <button 
                         onClick={() => { setEditingSeason(null); setNewSeasonName(''); setShowNewSeasonModal(true); }}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20"
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
                       >
                         <Plus size={15} /> Nuova Stagione
                       </button>
@@ -588,7 +586,7 @@ export default function BoardGameTracker() {
                       {seasons.map(season => {
                         const count = matches.filter(m => m.season === season.name).length;
                         return (
-                          <div key={season.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex justify-between items-center">
+                          <div key={season.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex justify-between items-center hover:border-slate-700 transition-all">
                             <div>
                               <h3 className="font-bold text-sm sm:text-base text-white">{season.name}</h3>
                               <p className="text-xs text-slate-400 mt-0.5">{count} partite registrate</p>
@@ -596,13 +594,13 @@ export default function BoardGameTracker() {
                             <div className="flex items-center gap-1.5">
                               <button 
                                 onClick={() => { setEditingSeason(season); setNewSeasonName(season.name); setShowNewSeasonModal(true); }}
-                                className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-2 rounded-xl transition-all border border-slate-700/50"
+                                className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-2 rounded-xl active:scale-95 transition-all border border-slate-700/50"
                               >
                                 <Edit2 size={14} />
                               </button>
                               <button 
                                 onClick={() => handleDeleteSeason(season.id)}
-                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl transition-all border border-red-500/20"
+                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl active:scale-95 transition-all border border-red-500/20"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -621,7 +619,7 @@ export default function BoardGameTracker() {
                       <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
                       <button 
                         onClick={() => { setEditingGame(null); setNewGameName(''); setNewGameImage(''); setShowNewGameModal(true); }}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20"
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
                       >
                         <Plus size={15} /> Aggiungi Gioco
                       </button>
@@ -631,7 +629,7 @@ export default function BoardGameTracker() {
                       {games.map(game => {
                         const gameMatches = matches.filter(m => m.game.toLowerCase() === game.name.toLowerCase());
                         return (
-                          <div key={game.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-slate-700 transition-all">
+                          <div key={game.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-slate-700 transition-all duration-300 hover:-translate-y-1">
                             <div className="h-44 bg-slate-950 relative overflow-hidden flex items-center justify-center">
                               {game.image ? (
                                 <img src={game.image} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -646,7 +644,7 @@ export default function BoardGameTracker() {
                               <h3 className="font-bold text-sm text-white">{game.name}</h3>
                               <button 
                                 onClick={() => { setEditingGame(game); setNewGameName(game.name); setNewGameImage(game.image || ''); setShowNewGameModal(true); }}
-                                className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/50 transition-all"
+                                className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/50 active:scale-95 transition-all"
                               >
                                 <Edit2 size={12} /> Gestisci Copertina
                               </button>
@@ -665,8 +663,8 @@ export default function BoardGameTracker() {
 
       {/* MODALE REGISTRA PARTITA */}
       {showNewMatchModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] transform transition-all">
             <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
               <h3 className="font-bold text-sm sm:text-base text-white">Registra Nuova Partita</h3>
               <button onClick={() => setShowNewMatchModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
@@ -676,204 +674,4 @@ export default function BoardGameTracker() {
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Gioco</label>
                 <input 
-                  type="text" 
-                  list="games-list" 
-                  required
-                  placeholder="Es. Catan, Ticket to Ride..." 
-                  value={newMatchGame}
-                  onChange={(e) => setNewMatchGame(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                />
-                <datalist id="games-list">
-                  {games.map(g => <option key={g.id} value={g.name} />)}
-                </datalist>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
-                  <input 
-                    type="date" 
-                    required
-                    value={newMatchDate}
-                    onChange={(e) => setNewMatchDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Stagione</label>
-                  <select 
-                    value={newMatchSeason}
-                    onChange={(e) => setNewMatchSeason(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    {seasons.map(s => (
-                      <option key={s.id} value={s.name}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Partecipanti e Punti (Vincitore automatico)</label>
-                  <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi riga</button>
-                </div>
-                <div className="space-y-2">
-                  {matchPlayers.map((p, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <select 
-                        required
-                        value={p.name}
-                        onChange={(e) => updatePlayerRow(index, 'name', e.target.value)}
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="">Seleziona giocatore...</option>
-                        {playersList.map(pl => (
-                          <option key={pl.id} value={pl.name}>{pl.name}</option>
-                        ))}
-                      </select>
-                      <input 
-                        type="number" 
-                        placeholder="Punti"
-                        required
-                        value={p.score}
-                        onChange={(e) => updatePlayerRow(index, 'score', e.target.value)}
-                        className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                      />
-                      {matchPlayers.length > 1 && (
-                        <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1.5">
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Note (Opzionale)</label>
-                <textarea 
-                  rows="2"
-                  value={newMatchNotes}
-                  onChange={(e) => setNewMatchNotes(e.target.value)}
-                  placeholder="Es. Partita decisa all'ultimo turno..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                ></textarea>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2.5">
-                <button type="button" onClick={() => setShowNewMatchModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Salva Partita</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODALE NUOVO GIOCATORE FISSO */}
-      {showNewPlayerModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
-            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-              <h3 className="font-bold text-sm sm:text-base text-white">Aggiungi Giocatore Fisso</h3>
-              <button onClick={() => setShowNewPlayerModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
-            </div>
-            
-            <form onSubmit={handleSavePlayer} className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Giocatore</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Es. Mario"
-                  value={newPlayerName}
-                  onChange={(e) => setNewPlayerName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2.5">
-                <button type="button" onClick={() => setShowNewPlayerModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Salva</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODALE GIOCO / IMMAGINE */}
-      {showNewGameModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-              <h3 className="font-bold text-sm sm:text-base text-white">{editingGame ? 'Modifica Gioco' : 'Aggiungi Gioco'}</h3>
-              <button onClick={() => setShowNewGameModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
-            </div>
-            
-            <form onSubmit={handleSaveGame} className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Gioco</label>
-                <input 
-                  type="text" 
-                  required
-                  disabled={!!editingGame}
-                  value={newGameName}
-                  onChange={(e) => setNewGameName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">URL Immagine Copertina</label>
-                <input 
-                  type="url" 
-                  placeholder="https://esempio.com/copertina.jpg"
-                  value={newGameImage}
-                  onChange={(e) => setNewGameImage(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2.5">
-                <button type="button" onClick={() => setShowNewGameModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Salva</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODALE STAGIONE (Crea o Modifica) */}
-      {showNewSeasonModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
-            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-              <h3 className="font-bold text-sm sm:text-base text-white">{editingSeason ? 'Modifica Stagione' : 'Nuova Stagione'}</h3>
-              <button onClick={() => setShowNewSeasonModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
-            </div>
-            
-            <form onSubmit={handleSaveSeason} className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Stagione</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Es. Lega Inverno 2026"
-                  value={newSeasonName}
-                  onChange={(e) => setNewSeasonName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2.5">
-                <button type="button" onClick={() => setShowNewSeasonModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Salva</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                  type="text"
