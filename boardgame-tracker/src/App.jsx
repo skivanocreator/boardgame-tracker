@@ -52,10 +52,11 @@ export default function BoardGameTracker() {
   const [newPlayerImage, setNewPlayerImage] = useState('');
   const [editingPlayer, setEditingPlayer] = useState(null);
 
-  // Modale Nuovo Gioco / Immagine
+  // Modale Nuovo Gioco / Immagine / Fazioni
   const [showNewGameModal, setShowNewGameModal] = useState(false);
   const [newGameName, setNewGameName] = useState('');
   const [newGameImage, setNewGameImage] = useState('');
+  const [newGameFactions, setNewGameFactions] = useState('');
   const [editingGame, setEditingGame] = useState(null);
 
   // Modale Nuova / Modifica Stagione
@@ -140,7 +141,6 @@ export default function BoardGameTracker() {
     } catch (err) { console.error(err); }
   };
 
-  // Avvia Partita (Sposta in Partite in Corso)
   const handleStartMatch = async (e) => {
     e.preventDefault();
     if (!newMatchGame || matchPlayers.length === 0) return;
@@ -165,7 +165,6 @@ export default function BoardGameTracker() {
     }
   };
 
-  // Termina Partita in Corso (Assegna punteggi e sposta in cronologia)
   const handleFinishMatchSubmit = async (e) => {
     e.preventDefault();
     if (!finishingMatch) return;
@@ -183,7 +182,6 @@ export default function BoardGameTracker() {
     }));
 
     try {
-      // Salva nella cronologia definitiva
       await addDoc(collection(db, 'matches'), {
         game: finishingMatch.game,
         date: finishingMatch.date,
@@ -193,7 +191,6 @@ export default function BoardGameTracker() {
         createdAt: new Date().toISOString()
       });
 
-      // Elimina dalle partite in corso
       await deleteDoc(doc(db, 'ongoingMatches', finishingMatch.id));
 
       setFinishingMatch(null);
@@ -215,16 +212,29 @@ export default function BoardGameTracker() {
     e.preventDefault();
     if (!newGameName) return;
     try {
+      const factionsArray = newGameFactions
+        ? newGameFactions.split(',').map(f => f.trim()).filter(Boolean)
+        : [];
+
       if (editingGame) {
-        await updateDoc(doc(db, 'games', editingGame.id), { name: newGameName, image: newGameImage });
+        await updateDoc(doc(db, 'games', editingGame.id), { 
+          name: newGameName, 
+          image: newGameImage,
+          factions: factionsArray
+        });
       } else {
         if (!games.some(g => g.name.toLowerCase() === newGameName.toLowerCase())) {
-          await addDoc(collection(db, 'games'), { name: newGameName, image: newGameImage });
+          await addDoc(collection(db, 'games'), { 
+            name: newGameName, 
+            image: newGameImage,
+            factions: factionsArray
+          });
         }
       }
       setShowNewGameModal(false);
       setNewGameName('');
       setNewGameImage('');
+      setNewGameFactions('');
       setEditingGame(null);
     } catch (err) { console.error(err); }
   };
@@ -302,6 +312,12 @@ export default function BoardGameTracker() {
   const getPlayerImage = (playerName) => {
     const found = playersList.find(p => p.name.toLowerCase() === playerName.toLowerCase());
     return found ? found.image : '';
+  };
+
+  // Ottieni le fazioni del gioco selezionato
+  const getSelectedGameFactions = () => {
+    const found = games.find(g => g.name.toLowerCase() === newMatchGame.toLowerCase());
+    return found && found.factions ? found.factions : [];
   };
 
   return (
@@ -781,7 +797,13 @@ export default function BoardGameTracker() {
                     <div className="flex justify-between items-center">
                       <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
                       <button 
-                        onClick={() => { setEditingGame(null); setNewGameName(''); setNewGameImage(''); setShowNewGameModal(true); }}
+                        onClick={() => { 
+                          setEditingGame(null); 
+                          setNewGameName(''); 
+                          setNewGameImage(''); 
+                          setNewGameFactions('');
+                          setShowNewGameModal(true); 
+                        }}
                         className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
                       >
                         <Plus size={15} /> Aggiungi Gioco
@@ -804,12 +826,27 @@ export default function BoardGameTracker() {
                               </div>
                             </div>
                             <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
-                              <h3 className="font-bold text-sm text-white">{game.name}</h3>
+                              <div>
+                                <h3 className="font-bold text-sm text-white">{game.name}</h3>
+                                {game.factions && game.factions.length > 0 ? (
+                                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                                    <span className="text-indigo-400 font-semibold">Fazioni:</span> {game.factions.join(', ')}
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-slate-500 mt-1 italic">Nessuna fazione impostata</p>
+                                )}
+                              </div>
                               <button 
-                                onClick={() => { setEditingGame(game); setNewGameName(game.name); setNewGameImage(game.image || ''); setShowNewGameModal(true); }}
+                                onClick={() => { 
+                                  setEditingGame(game); 
+                                  setNewGameName(game.name); 
+                                  setNewGameImage(game.image || ''); 
+                                  setNewGameFactions(game.factions ? game.factions.join(', ') : '');
+                                  setShowNewGameModal(true); 
+                                }}
                                 className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/50 active:scale-95 transition-all"
                               >
-                                <Edit2 size={12} /> Gestisci Copertina
+                                <Edit2 size={12} /> Modifica Gioco & Fazioni
                               </button>
                             </div>
                           </div>
@@ -880,33 +917,51 @@ export default function BoardGameTracker() {
                   <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi giocatore</button>
                 </div>
                 <div className="space-y-2">
-                  {matchPlayers.map((p, index) => (
-                    <div key={index} className="flex items-center gap-2 animate-in fade-in duration-200">
-                      <select 
-                        required
-                        value={p.name}
-                        onChange={(e) => updatePlayerRow(index, 'name', e.target.value)}
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="">Seleziona giocatore...</option>
-                        {playersList.map(pl => (
-                          <option key={pl.id} value={pl.name}>{pl.name}</option>
-                        ))}
-                      </select>
-                      <input 
-                        type="text" 
-                        placeholder="Fazione / Razza"
-                        value={p.faction}
-                        onChange={(e) => updatePlayerRow(index, 'faction', e.target.value)}
-                        className="w-32 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                      />
-                      {matchPlayers.length > 1 && (
-                        <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1.5 active:scale-95 transition-all">
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {matchPlayers.map((p, index) => {
+                    const availableFactions = getSelectedGameFactions();
+                    return (
+                      <div key={index} className="flex items-center gap-2 animate-in fade-in duration-200">
+                        <select 
+                          required
+                          value={p.name}
+                          onChange={(e) => updatePlayerRow(index, 'name', e.target.value)}
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="">Seleziona giocatore...</option>
+                          {playersList.map(pl => (
+                            <option key={pl.id} value={pl.name}>{pl.name}</option>
+                          ))}
+                        </select>
+
+                        {availableFactions.length > 0 ? (
+                          <select 
+                            value={p.faction}
+                            onChange={(e) => updatePlayerRow(index, 'faction', e.target.value)}
+                            className="w-32 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value="">Fazione...</option>
+                            {availableFactions.map((f, fIdx) => (
+                              <option key={fIdx} value={f}>{f}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input 
+                            type="text" 
+                            placeholder="Fazione / Razza"
+                            value={p.faction}
+                            onChange={(e) => updatePlayerRow(index, 'faction', e.target.value)}
+                            className="w-32 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                          />
+                        )}
+
+                        {matchPlayers.length > 1 && (
+                          <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1.5 active:scale-95 transition-all">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1015,7 +1070,7 @@ export default function BoardGameTracker() {
         </div>
       )}
 
-      {/* MODALE GIOCO / IMMAGINE */}
+      {/* MODALE GIOCO / IMMAGINE / FAZIONI */}
       {showNewGameModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
@@ -1044,6 +1099,17 @@ export default function BoardGameTracker() {
                   placeholder="https://esempio.com/copertina.jpg"
                   value={newGameImage}
                   onChange={(e) => setNewGameImage(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Razze / Fazioni (separate da virgola)</label>
+                <input 
+                  type="text" 
+                  placeholder="Es. Umani, Elfi, Orchi, Nani"
+                  value={newGameFactions}
+                  onChange={(e) => setNewGameFactions(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
