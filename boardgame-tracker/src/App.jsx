@@ -20,13 +20,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default function BoardGameTracker() {
-  // Impostato a 'classifica' per aprirsi subito in prima pagina sulla classifica
   const [activeTab, setActiveTab] = useState('classifica');
   const [matches, setMatches] = useState([]);
   const [games, setGames] = useState([]);
   const [playersList, setPlayersList] = useState([]);
-  const [seasons, setSeasons] = useState([{ id: 'all', name: 'Tutte le stagioni' }]);
-  const [selectedSeason, setSelectedSeason] = useState('all');
+  const [seasons, setSeasons] = useState([]);
+  const [selectedSeason, setSelectedSeason] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -35,7 +34,7 @@ export default function BoardGameTracker() {
   const [showNewMatchModal, setShowNewMatchModal] = useState(false);
   const [newMatchGame, setNewMatchGame] = useState('');
   const [newMatchDate, setNewMatchDate] = useState(new Date().toISOString().split('T')[0]);
-  const [newMatchSeason, setNewMatchSeason] = useState('Generale');
+  const [newMatchSeason, setNewMatchSeason] = useState('');
   const [newMatchNotes, setNewMatchNotes] = useState('');
   const [matchPlayers, setMatchPlayers] = useState([{ name: '', score: '' }]);
 
@@ -49,9 +48,10 @@ export default function BoardGameTracker() {
   const [newGameImage, setNewGameImage] = useState('');
   const [editingGame, setEditingGame] = useState(null);
 
-  // Modale Nuova Stagione
+  // Modale Nuova / Modifica Stagione
   const [showNewSeasonModal, setShowNewSeasonModal] = useState(false);
   const [newSeasonName, setNewSeasonName] = useState('');
+  const [editingSeason, setEditingSeason] = useState(null);
 
   // Sincronizzazione in tempo reale con Firestore
   useEffect(() => {
@@ -70,8 +70,14 @@ export default function BoardGameTracker() {
       });
 
       const unsubSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setSeasons([{ id: 'all', name: 'Tutte le stagioni' }, ...data]);
+        const seasonsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSeasons(seasonsData);
+        // Imposta la prima stagione di default se non è impostata
+        if (seasonsData.length > 0 && !selectedSeason) {
+          setSelectedSeason(seasonsData[0].name);
+        } else if (seasonsData.length === 0 && !selectedSeason) {
+          setSelectedSeason('Generale');
+        }
       });
 
       return () => {
@@ -136,7 +142,7 @@ export default function BoardGameTracker() {
       await addDoc(collection(db, 'matches'), {
         game: newMatchGame,
         date: newMatchDate,
-        season: newMatchSeason || 'Generale',
+        season: newMatchSeason || (seasons[0]?.name || 'Generale'),
         notes: newMatchNotes,
         players: finalPlayers,
         createdAt: new Date().toISOString()
@@ -175,12 +181,23 @@ export default function BoardGameTracker() {
 
   const handleSaveSeason = async (e) => {
     e.preventDefault();
-    if (!newSeasonName) return;
+    if (!newSeasonName.trim()) return;
     try {
-      await addDoc(collection(db, 'seasons'), { name: newSeasonName });
+      if (editingSeason) {
+        await updateDoc(doc(db, 'seasons', editingSeason.id), { name: newSeasonName.trim() });
+      } else {
+        await addDoc(collection(db, 'seasons'), { name: newSeasonName.trim() });
+      }
       setShowNewSeasonModal(false);
       setNewSeasonName('');
+      setEditingSeason(null);
     } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteSeason = async (id) => {
+    if (window.confirm("Vuoi davvero eliminare questa stagione?")) {
+      await deleteDoc(doc(db, 'seasons', id));
+    }
   };
 
   const handleDeleteMatch = async (id) => {
@@ -189,6 +206,7 @@ export default function BoardGameTracker() {
     }
   };
 
+  // Filtro partite in base alla stagione selezionata (Gestisce anche 'all' solo per la classifica)
   const filteredMatches = selectedSeason === 'all' 
     ? matches 
     : matches.filter(m => m.season === selectedSeason);
@@ -228,6 +246,7 @@ export default function BoardGameTracker() {
             </div>
           </div>
 
+          {/* Selettore Stagione visibile solo in Classifica, oppure mostra la stagione attiva altrove */}
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
             <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
               <Calendar size={15} className="text-indigo-400" />
@@ -236,6 +255,7 @@ export default function BoardGameTracker() {
                 onChange={(e) => setSelectedSeason(e.target.value)}
                 className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer"
               >
+                {activeTab === 'classifica' && <option value="all" className="bg-slate-900">✨ Tutte le stagioni</option>}
                 {seasons.map(s => (
                   <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>
                 ))}
@@ -292,7 +312,10 @@ export default function BoardGameTracker() {
 
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => setShowNewMatchModal(true)}
+              onClick={() => {
+                if (seasons.length > 0 && !newMatchSeason) setNewMatchSeason(seasons[0].name);
+                setShowNewMatchModal(true);
+              }}
               className="w-full sm:w-auto items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/20 transition-all flex"
             >
               <Plus size={16} /> Registra Partita
@@ -313,7 +336,7 @@ export default function BoardGameTracker() {
                 <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/90">
                   <div>
                     <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                      <Trophy className="text-amber-400" size={18} /> Classifica Generale ({selectedSeason})
+                      <Trophy className="text-amber-400" size={18} /> Classifica Generale ({selectedSeason === 'all' ? 'Tutte le stagioni' : selectedSeason})
                     </h2>
                     <p className="text-xs text-slate-400 mt-0.5">Ordinata per somma totale dei punti accumulati</p>
                   </div>
@@ -449,13 +472,13 @@ export default function BoardGameTracker() {
               </div>
             )}
 
-            {/* STAGIONI */}
+            {/* STAGIONI (Con tasti Modifica ed Elimina) */}
             {activeTab === 'stagioni' && (
               <div className="space-y-5">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-bold text-white">Stagioni & Leghe</h2>
                   <button 
-                    onClick={() => setShowNewSeasonModal(true)}
+                    onClick={() => { setEditingSeason(null); setNewSeasonName(''); setShowNewSeasonModal(true); }}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20"
                   >
                     <Plus size={15} /> Nuova Stagione
@@ -464,7 +487,6 @@ export default function BoardGameTracker() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
                   {seasons.map(season => {
-                    if (season.id === 'all') return null;
                     const count = matches.filter(m => m.season === season.name).length;
                     return (
                       <div key={season.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex justify-between items-center">
@@ -472,7 +494,20 @@ export default function BoardGameTracker() {
                           <h3 className="font-bold text-sm sm:text-base text-white">{season.name}</h3>
                           <p className="text-xs text-slate-400 mt-0.5">{count} partite registrate</p>
                         </div>
-                        <Calendar className="text-indigo-400" size={22} />
+                        <div className="flex items-center gap-1.5">
+                          <button 
+                            onClick={() => { setEditingSeason(season); setNewSeasonName(season.name); setShowNewSeasonModal(true); }}
+                            className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-2 rounded-xl transition-all border border-slate-700/50"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteSeason(season.id)}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl transition-all border border-red-500/20"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -483,7 +518,7 @@ export default function BoardGameTracker() {
             {/* CRONOLOGIA */}
             {activeTab === 'cronologia' && (
               <div className="space-y-3.5">
-                <h2 className="text-lg font-bold text-white mb-2">Cronologia Partite ({selectedSeason})</h2>
+                <h2 className="text-lg font-bold text-white mb-2">Cronologia Partite ({selectedSeason === 'all' ? 'Tutte le stagioni' : selectedSeason})</h2>
                 {filteredMatches.length === 0 ? (
                   <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">Nessuna partita trovata.</div>
                 ) : (
@@ -565,8 +600,7 @@ export default function BoardGameTracker() {
                     onChange={(e) => setNewMatchSeason(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="Generale">Generale</option>
-                    {seasons.filter(s => s.id !== 'all').map(s => (
+                    {seasons.map(s => (
                       <option key={s.id} value={s.name}>{s.name}</option>
                     ))}
                   </select>
@@ -703,12 +737,12 @@ export default function BoardGameTracker() {
         </div>
       )}
 
-      {/* MODALE STAGIONE */}
+      {/* MODALE STAGIONE (Crea o Modifica) */}
       {showNewSeasonModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
             <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-              <h3 className="font-bold text-sm sm:text-base text-white">Nuova Stagione</h3>
+              <h3 className="font-bold text-sm sm:text-base text-white">{editingSeason ? 'Modifica Stagione' : 'Nuova Stagione'}</h3>
               <button onClick={() => setShowNewSeasonModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
             
@@ -727,7 +761,7 @@ export default function BoardGameTracker() {
 
               <div className="pt-2 flex justify-end gap-2.5">
                 <button type="button" onClick={() => setShowNewSeasonModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
-                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Crea</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Salva</button>
               </div>
             </form>
           </div>
