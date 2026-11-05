@@ -23,6 +23,8 @@ export default function BoardGameTracker() {
   const [activeTab, setActiveTab] = useState('classifica');
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState(null);
+  const [selectedMatchDetail, setSelectedMatchDetail] = useState(null);
+  const [selectedGameDetail, setSelectedGameDetail] = useState(null);
 
   const [matches, setMatches] = useState([]);
   const [ongoingMatches, setOngoingMatches] = useState([]);
@@ -227,6 +229,10 @@ export default function BoardGameTracker() {
       await updateDoc(doc(db, 'matches', editingNotesMatch.id), {
         notes: currentNotesValue
       });
+      // Aggiorna anche lo stato locale del dettaglio se aperto
+      if (selectedMatchDetail && selectedMatchDetail.id === editingNotesMatch.id) {
+        setSelectedMatchDetail({ ...selectedMatchDetail, notes: currentNotesValue });
+      }
       setEditingNotesMatch(null);
       setCurrentNotesValue('');
     } catch (err) {
@@ -294,6 +300,7 @@ export default function BoardGameTracker() {
   const handleDeleteMatch = async (id) => {
     if (window.confirm("Vuoi eliminare questa partita?")) {
       await deleteDoc(doc(db, 'matches', id));
+      setSelectedMatchDetail(null);
     }
   };
 
@@ -402,16 +409,16 @@ export default function BoardGameTracker() {
 
           <div className="flex flex-col gap-2.5 py-4 flex-1">
             <button 
-              onClick={() => { setActiveTab('classifica'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'classifica' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+              onClick={() => { setActiveTab('classifica'); setSelectedPlayerDetail(null); setSelectedMatchDetail(null); setSelectedGameDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'classifica' && !selectedPlayerDetail && !selectedMatchDetail && !selectedGameDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
             >
               <div className="flex items-center gap-3"><Trophy size={18} /> Classifica</div>
               <ChevronRight size={16} className="text-slate-500" />
             </button>
             
             <button 
-              onClick={() => { setActiveTab('inCorso'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'inCorso' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+              onClick={() => { setActiveTab('inCorso'); setSelectedPlayerDetail(null); setSelectedMatchDetail(null); setSelectedGameDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'inCorso' && !selectedPlayerDetail && !selectedMatchDetail && !selectedGameDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
             >
               <div className="flex items-center gap-3">
                 <Play size={18} className="text-emerald-400" /> Partite in corso 
@@ -421,32 +428,32 @@ export default function BoardGameTracker() {
             </button>
 
             <button 
-              onClick={() => { setActiveTab('cronologia'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'cronologia' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+              onClick={() => { setActiveTab('cronologia'); setSelectedPlayerDetail(null); setSelectedMatchDetail(null); setSelectedGameDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'cronologia' && !selectedPlayerDetail && !selectedMatchDetail && !selectedGameDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
             >
               <div className="flex items-center gap-3"><Clock size={18} /> Cronologia</div>
               <ChevronRight size={16} className="text-slate-500" />
             </button>
 
             <button 
-              onClick={() => { setActiveTab('giocatori'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giocatori' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+              onClick={() => { setActiveTab('giocatori'); setSelectedPlayerDetail(null); setSelectedMatchDetail(null); setSelectedGameDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giocatori' && !selectedPlayerDetail && !selectedMatchDetail && !selectedGameDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
             >
               <div className="flex items-center gap-3"><Users size={18} /> Giocatori</div>
               <ChevronRight size={16} className="text-slate-500" />
             </button>
 
             <button 
-              onClick={() => { setActiveTab('stagioni'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'stagioni' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+              onClick={() => { setActiveTab('stagioni'); setSelectedPlayerDetail(null); setSelectedMatchDetail(null); setSelectedGameDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'stagioni' && !selectedPlayerDetail && !selectedMatchDetail && !selectedGameDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
             >
               <div className="flex items-center gap-3"><Calendar size={18} /> Stagioni</div>
               <ChevronRight size={16} className="text-slate-500" />
             </button>
 
             <button 
-              onClick={() => { setActiveTab('giochi'); setSelectedPlayerDetail(null); setMenuOpen(false); }}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giochi' && !selectedPlayerDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
+              onClick={() => { setActiveTab('giochi'); setSelectedPlayerDetail(null); setSelectedMatchDetail(null); setSelectedGameDetail(null); setMenuOpen(false); }}
+              className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-sm transition-all transform active:scale-98 ${activeTab === 'giochi' && !selectedPlayerDetail && !selectedMatchDetail && !selectedGameDetail ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]' : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800 hover:translate-x-1.5'}`}
             >
               <div className="flex items-center gap-3"><Gamepad2 size={18} /> Giochi</div>
               <ChevronRight size={16} className="text-slate-500" />
@@ -483,7 +490,7 @@ export default function BoardGameTracker() {
           <div className="text-center py-20 text-slate-500 animate-pulse font-medium text-sm">Sincronizzazione dati cloud...</div>
         ) : (
           <>
-            {/* SEZIONE DETTAGLIO GIOCATORE SELEZIONATO */}
+            {/* SEZIONE DETTAGLIO GIOCATORE */}
             {selectedPlayerDetail ? (
               <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex justify-between items-center">
@@ -521,7 +528,6 @@ export default function BoardGameTracker() {
                   </div>
                 </div>
 
-                {/* Card statistiche globali */}
                 {(() => {
                   const stats = getPlayerGlobalStats(selectedPlayerDetail.name);
                   return (
@@ -546,6 +552,158 @@ export default function BoardGameTracker() {
                   );
                 })()}
               </div>
+
+            /* SEZIONE DETTAGLIO PARTITA DALLA CRONOLOGIA */
+            ) : selectedMatchDetail ? (
+              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center">
+                  <button 
+                    onClick={() => setSelectedMatchDetail(null)}
+                    className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
+                  >
+                    <ArrowLeft size={16} /> Torna alla cronologia
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteMatch(selectedMatchDetail.id)}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-red-500/20 transition-all"
+                  >
+                    <Trash2 size={14} /> Elimina Partita
+                  </button>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-slate-800">
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h2 className="text-2xl font-black text-white">{selectedMatchDetail.game}</h2>
+                        <span className="bg-indigo-500/10 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-500/20">{selectedMatchDetail.season}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                        <Calendar size={14} /> Registrata il {selectedMatchDetail.date}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Risultati e Partecipanti</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {selectedMatchDetail.players?.map((p, idx) => (
+                        <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between ${p.isWinner ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-slate-950 border-slate-800 text-slate-200'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${p.isWinner ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30' : 'bg-slate-800 text-slate-300'}`}>
+                              {p.isWinner ? '👑' : `#${idx + 1}`}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm sm:text-base text-white">{p.name}</p>
+                              {p.faction && <p className="text-xs text-indigo-300">Fazione: {p.faction}</p>}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-black text-amber-400">{p.score}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400">punti</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-800">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <FileText size={14} /> Note / Resoconto Post-Game
+                      </h3>
+                      <button 
+                        onClick={() => {
+                          setEditingNotesMatch(selectedMatchDetail);
+                          setCurrentNotesValue(selectedMatchDetail.notes || '');
+                        }}
+                        className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition-all"
+                      >
+                        <Edit2 size={12} /> Modifica note
+                      </button>
+                    </div>
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-sm text-slate-300 italic">
+                      {selectedMatchDetail.notes ? `"${selectedMatchDetail.notes}"` : 'Nessuna nota registrata per questa partita.'}
+                    </div>
+                  </div>
+                </div>
+
+            /* SEZIONE DETTAGLIO GIOCO DALLA LIBRERIA */
+            ) : selectedGameDetail ? (
+              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+                <button 
+                  onClick={() => setSelectedGameDetail(null)}
+                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold text-sm bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl transition-all hover:pl-3"
+                >
+                  <ArrowLeft size={16} /> Torna alla libreria giochi
+                </button>
+
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center gap-6">
+                  <div className="w-28 h-28 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                    {selectedGameDetail.image ? (
+                      <img src={selectedGameDetail.image} alt={selectedGameDetail.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Gamepad2 size={48} className="text-slate-700" />
+                    )}
+                  </div>
+                  <div className="text-center md:text-left flex-1 space-y-2">
+                    <h2 className="text-2xl font-black text-white">{selectedGameDetail.name}</h2>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Razze / Fazioni disponibili:</p>
+                      {selectedGameDetail.factions && selectedGameDetail.factions.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
+                          {selectedGameDetail.factions.map((f, i) => (
+                            <span key={i} className="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-1 rounded-xl font-medium">
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic">Nessuna fazione predefinita configurata.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Clock size={18} className="text-indigo-400" /> Partite disputate a {selectedGameDetail.name}
+                  </h3>
+                  {(() => {
+                    const gameMatches = matches.filter(m => m.game.toLowerCase() === selectedGameDetail.name.toLowerCase());
+                    if (gameMatches.length === 0) {
+                      return (
+                        <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
+                          Non è stata ancora registrata nessuna partita per questo gioco.
+                        </div>
+                      );
+                    }
+                    return gameMatches.map(m => (
+                      <div 
+                        key={m.id} 
+                        onClick={() => setSelectedMatchDetail(m)}
+                        className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2.5">
+                            <h4 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">Partita del {m.date}</h4>
+                            <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {m.players?.map((p, i) => (
+                              <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
+                                {p.isWinner && '👑'} {p.name} {p.faction && `(${p.faction})`}: <strong>{p.score}</strong> pt
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
             ) : (
               <>
                 {/* 1. CLASSIFICA */}
@@ -683,18 +841,23 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 3. CRONOLOGIA */}
+                {/* 3. CRONOLOGIA (CLICCABILE) */}
                 {activeTab === 'cronologia' && (
                   <div className="space-y-3.5">
                     <h2 className="text-lg font-bold text-white mb-2">Cronologia Tutte le Partite</h2>
+                    <p className="text-xs text-slate-400 -mt-2 mb-3">Clicca su una partita per vedere i dettagli completi</p>
                     {matches.length === 0 ? (
                       <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">Nessuna partita trovata.</div>
                     ) : (
                       matches.map(m => (
-                        <div key={m.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-slate-700 transition-all">
+                        <div 
+                          key={m.id} 
+                          onClick={() => setSelectedMatchDetail(m)}
+                          className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
+                        >
                           <div className="flex-1">
                             <div className="flex items-center gap-2.5">
-                              <h3 className="font-bold text-sm sm:text-base text-white">{m.game}</h3>
+                              <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-indigo-300 transition-colors">{m.game}</h3>
                               <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
                             </div>
                             <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
@@ -707,25 +870,9 @@ export default function BoardGameTracker() {
                                 </span>
                               ))}
                             </div>
-                            <div className="mt-2 flex items-center gap-2">
-                              <p className="text-xs text-slate-300 italic">Note: {m.notes ? `"${m.notes}"` : <span className="text-slate-500">Nessuna nota</span>}</p>
-                              <button 
-                                onClick={() => {
-                                  setEditingNotesMatch(m);
-                                  setCurrentNotesValue(m.notes || '');
-                                }}
-                                className="text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all border border-indigo-500/20"
-                              >
-                                <FileText size={12} /> Modifica note
-                              </button>
-                            </div>
+                            {m.notes && <p className="text-xs text-slate-400 mt-2 italic">Note: "{m.notes}"</p>}
                           </div>
-                          <button 
-                            onClick={() => handleDeleteMatch(m.id)}
-                            className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2 rounded-xl active:scale-95 transition-all self-end md:self-center border border-red-500/20"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
                         </div>
                       ))
                     )}
@@ -832,11 +979,14 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 6. GIOCHI */}
+                {/* 6. GIOCHI (CLICCABILE) */}
                 {activeTab === 'giochi' && (
                   <div className="space-y-5">
                     <div className="flex justify-between items-center">
-                      <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Libreria Giochi</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Clicca su un gioco per vederne i dettagli e le partite fatte</p>
+                      </div>
                       <button 
                         onClick={() => { 
                           setEditingGame(null); 
@@ -855,7 +1005,11 @@ export default function BoardGameTracker() {
                       {games.map(game => {
                         const gameMatches = matches.filter(m => m.game.toLowerCase() === game.name.toLowerCase());
                         return (
-                          <div key={game.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-slate-700 transition-all duration-300 hover:-translate-y-1">
+                          <div 
+                            key={game.id} 
+                            onClick={() => setSelectedGameDetail(game)}
+                            className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                          >
                             <div className="h-44 bg-slate-950 relative overflow-hidden flex items-center justify-center">
                               {game.image ? (
                                 <img src={game.image} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -868,7 +1022,7 @@ export default function BoardGameTracker() {
                             </div>
                             <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
                               <div>
-                                <h3 className="font-bold text-sm text-white">{game.name}</h3>
+                                <h3 className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">{game.name}</h3>
                                 {game.factions && game.factions.length > 0 ? (
                                   <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
                                     <span className="text-indigo-400 font-semibold">Fazioni:</span> {game.factions.join(', ')}
@@ -877,18 +1031,23 @@ export default function BoardGameTracker() {
                                   <p className="text-[11px] text-slate-500 mt-1 italic">Nessuna fazione impostata</p>
                                 )}
                               </div>
-                              <button 
-                                onClick={() => { 
-                                  setEditingGame(game); 
-                                  setNewGameName(game.name); 
-                                  setNewGameImage(game.image || ''); 
-                                  setGameFactionsList(game.factions && game.factions.length > 0 ? game.factions : ['']);
-                                  setShowNewGameModal(true); 
-                                }}
-                                className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/50 active:scale-95 transition-all"
-                              >
-                                <Edit2 size={12} /> Modifica Gioco & Fazioni
-                              </button>
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                                <span className="text-xs text-indigo-400 font-semibold">Apri dettagli</span>
+                                <button 
+                                  onClick={(e) => { 
+                                    e.stopPropagation();
+                                    setEditingGame(game); 
+                                    setNewGameName(game.name); 
+                                    setNewGameImage(game.image || ''); 
+                                    setGameFactionsList(game.factions && game.factions.length > 0 ? game.factions : ['']);
+                                    setShowNewGameModal(true); 
+                                  }}
+                                  className="bg-slate-800 hover:bg-slate-750 text-slate-300 p-1.5 rounded-lg text-xs font-semibold border border-slate-700/50"
+                                  title="Modifica Gioco"
+                                >
+                                  <Edit2 size={13} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -927,7 +1086,6 @@ export default function BoardGameTracker() {
                 </select>
               </div>
 
-              {/* Layout a colonna singola per evitare sovrapposizioni su mobile/tablet */}
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
