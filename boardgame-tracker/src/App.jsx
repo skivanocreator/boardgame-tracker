@@ -25,7 +25,7 @@ export default function BoardGameTracker() {
   const [games, setGames] = useState([]);
   const [playersList, setPlayersList] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [selectedSeason, setSelectedSeason] = useState('');
+  const [selectedSeason, setSelectedSeason] = useState('all');
   
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -72,12 +72,6 @@ export default function BoardGameTracker() {
       const unsubSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
         const seasonsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setSeasons(seasonsData);
-        // Imposta la prima stagione di default se non è impostata
-        if (seasonsData.length > 0 && !selectedSeason) {
-          setSelectedSeason(seasonsData[0].name);
-        } else if (seasonsData.length === 0 && !selectedSeason) {
-          setSelectedSeason('Generale');
-        }
       });
 
       return () => {
@@ -206,7 +200,7 @@ export default function BoardGameTracker() {
     }
   };
 
-  // Filtro partite in base alla stagione selezionata (Gestisce anche 'all' solo per la classifica)
+  // Filtro partite per la classifica
   const filteredMatches = selectedSeason === 'all' 
     ? matches 
     : matches.filter(m => m.season === selectedSeason);
@@ -231,9 +225,9 @@ export default function BoardGameTracker() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-12 overflow-x-hidden selection:bg-indigo-500 selection:text-white">
-      {/* Header HUD Moderno */}
+      {/* Header HUD Moderno (Senza selettore stagioni) */}
       <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center gap-3">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
               <Trophy size={24} />
@@ -243,23 +237,6 @@ export default function BoardGameTracker() {
                 BoardGame Tracker <span className="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full">Pro</span>
               </h1>
               <p className="text-[11px] text-slate-400">Gestione avanzata leghe e partite</p>
-            </div>
-          </div>
-
-          {/* Selettore Stagione visibile solo in Classifica, oppure mostra la stagione attiva altrove */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
-              <Calendar size={15} className="text-indigo-400" />
-              <select 
-                value={selectedSeason} 
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer"
-              >
-                {activeTab === 'classifica' && <option value="all" className="bg-slate-900">✨ Tutte le stagioni</option>}
-                {seasons.map(s => (
-                  <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
@@ -330,58 +307,73 @@ export default function BoardGameTracker() {
           <div className="text-center py-20 text-slate-500 animate-pulse font-medium text-sm">Sincronizzazione dati cloud...</div>
         ) : (
           <>
-            {/* CLASSIFICA */}
+            {/* CLASSIFICA (Con selettore stagioni integrato) */}
             {activeTab === 'classifica' && (
-              <div className="bg-slate-900/60 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
-                <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/90">
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
                   <div>
                     <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                      <Trophy className="text-amber-400" size={18} /> Classifica Generale ({selectedSeason === 'all' ? 'Tutte le stagioni' : selectedSeason})
+                      <Trophy className="text-amber-400" size={18} /> Classifica Generale
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Ordinata per somma totale dei punti accumulati</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Seleziona la stagione per filtrare i punteggi</p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
+                    <Calendar size={15} className="text-indigo-400 shrink-0" />
+                    <select 
+                      value={selectedSeason} 
+                      onChange={(e) => setSelectedSeason(e.target.value)}
+                      className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer w-full"
+                    >
+                      <option value="all" className="bg-slate-900">✨ Tutte le stagioni</option>
+                      {seasons.map(s => (
+                        <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {leaderboard.length === 0 ? (
-                  <div className="p-12 text-center text-slate-500 text-sm">Nessuna partita registrata in questa stagione.</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[500px]">
-                      <thead>
-                        <tr className="bg-slate-950/60 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
-                          <th className="py-3.5 px-5 font-semibold">Pos</th>
-                          <th className="py-3.5 px-5 font-semibold">Giocatore</th>
-                          <th className="py-3.5 px-5 font-semibold text-center">Partite</th>
-                          <th className="py-3.5 px-5 font-semibold text-center">Vittorie</th>
-                          <th className="py-3.5 px-5 font-semibold text-center">% Vittorie</th>
-                          <th className="py-3.5 px-5 font-semibold text-right">Punti Totali</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
-                        {leaderboard.map((item, idx) => {
-                          const winRate = item.played > 0 ? ((item.wins / item.played) * 100).toFixed(1) : 0;
-                          return (
-                            <tr key={item.name} className="hover:bg-slate-850/50 transition-colors">
-                              <td className="py-3.5 px-5 font-black text-slate-300">
-                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                              </td>
-                              <td className="py-3.5 px-5 font-bold text-white flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                                  {item.name.charAt(0).toUpperCase()}
-                                </div>
-                                {item.name}
-                              </td>
-                              <td className="py-3.5 px-5 text-center text-slate-300 font-medium">{item.played}</td>
-                              <td className="py-3.5 px-5 text-center font-semibold text-emerald-400">{item.wins}</td>
-                              <td className="py-3.5 px-5 text-center font-medium text-indigo-300">{winRate}%</td>
-                              <td className="py-3.5 px-5 text-right font-black text-amber-400 text-sm sm:text-base">{item.totalScore}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div className="bg-slate-900/60 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
+                  {leaderboard.length === 0 ? (
+                    <div className="p-12 text-center text-slate-500 text-sm">Nessuna partita registrata in questa stagione.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="bg-slate-950/60 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                            <th className="py-3.5 px-5 font-semibold">Pos</th>
+                            <th className="py-3.5 px-5 font-semibold">Giocatore</th>
+                            <th className="py-3.5 px-5 font-semibold text-center">Partite</th>
+                            <th className="py-3.5 px-5 font-semibold text-center">Vittorie</th>
+                            <th className="py-3.5 px-5 font-semibold text-center">% Vittorie</th>
+                            <th className="py-3.5 px-5 font-semibold text-right">Punti Totali</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
+                          {leaderboard.map((item, idx) => {
+                            const winRate = item.played > 0 ? ((item.wins / item.played) * 100).toFixed(1) : 0;
+                            return (
+                              <tr key={item.name} className="hover:bg-slate-850/50 transition-colors">
+                                <td className="py-3.5 px-5 font-black text-slate-300">
+                                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                                </td>
+                                <td className="py-3.5 px-5 font-bold text-white flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                    {item.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  {item.name}
+                                </td>
+                                <td className="py-3.5 px-5 text-center text-slate-300 font-medium">{item.played}</td>
+                                <td className="py-3.5 px-5 text-center font-semibold text-emerald-400">{item.wins}</td>
+                                <td className="py-3.5 px-5 text-center font-medium text-indigo-300">{winRate}%</td>
+                                <td className="py-3.5 px-5 text-right font-black text-amber-400 text-sm sm:text-base">{item.totalScore}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -472,7 +464,7 @@ export default function BoardGameTracker() {
               </div>
             )}
 
-            {/* STAGIONI (Con tasti Modifica ed Elimina) */}
+            {/* STAGIONI */}
             {activeTab === 'stagioni' && (
               <div className="space-y-5">
                 <div className="flex justify-between items-center">
@@ -518,11 +510,11 @@ export default function BoardGameTracker() {
             {/* CRONOLOGIA */}
             {activeTab === 'cronologia' && (
               <div className="space-y-3.5">
-                <h2 className="text-lg font-bold text-white mb-2">Cronologia Partite ({selectedSeason === 'all' ? 'Tutte le stagioni' : selectedSeason})</h2>
-                {filteredMatches.length === 0 ? (
+                <h2 className="text-lg font-bold text-white mb-2">Cronologia Tutte le Partite</h2>
+                {matches.length === 0 ? (
                   <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">Nessuna partita trovata.</div>
                 ) : (
-                  filteredMatches.map(m => (
+                  matches.map(m => (
                     <div key={m.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                       <div>
                         <div className="flex items-center gap-2.5">
