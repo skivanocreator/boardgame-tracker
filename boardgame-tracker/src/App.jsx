@@ -52,11 +52,11 @@ export default function BoardGameTracker() {
   const [newPlayerImage, setNewPlayerImage] = useState('');
   const [editingPlayer, setEditingPlayer] = useState(null);
 
-  // Modale Nuovo Gioco / Immagine / Fazioni
+  // Modale Nuovo Gioco / Immagine / Fazioni singole
   const [showNewGameModal, setShowNewGameModal] = useState(false);
   const [newGameName, setNewGameName] = useState('');
   const [newGameImage, setNewGameImage] = useState('');
-  const [newGameFactions, setNewGameFactions] = useState('');
+  const [gameFactionsList, setGameFactionsList] = useState(['']);
   const [editingGame, setEditingGame] = useState(null);
 
   // Modale Nuova / Modifica Stagione
@@ -113,6 +113,20 @@ export default function BoardGameTracker() {
 
   const removePlayerRow = (index) => {
     setMatchPlayers(matchPlayers.filter((_, i) => i !== index));
+  };
+
+  const addGameFactionField = () => {
+    setGameFactionsList([...gameFactionsList, '']);
+  };
+
+  const updateGameFactionField = (index, value) => {
+    const updated = [...gameFactionsList];
+    updated[index] = value;
+    setGameFactionsList(updated);
+  };
+
+  const removeGameFactionField = (index) => {
+    setGameFactionsList(gameFactionsList.filter((_, i) => i !== index));
   };
 
   const handleSavePlayer = async (e) => {
@@ -212,29 +226,27 @@ export default function BoardGameTracker() {
     e.preventDefault();
     if (!newGameName) return;
     try {
-      const factionsArray = newGameFactions
-        ? newGameFactions.split(',').map(f => f.trim()).filter(Boolean)
-        : [];
+      const cleanFactions = gameFactionsList.map(f => f.trim()).filter(Boolean);
 
       if (editingGame) {
         await updateDoc(doc(db, 'games', editingGame.id), { 
           name: newGameName, 
           image: newGameImage,
-          factions: factionsArray
+          factions: cleanFactions
         });
       } else {
         if (!games.some(g => g.name.toLowerCase() === newGameName.toLowerCase())) {
           await addDoc(collection(db, 'games'), { 
             name: newGameName, 
             image: newGameImage,
-            factions: factionsArray
+            factions: cleanFactions
           });
         }
       }
       setShowNewGameModal(false);
       setNewGameName('');
       setNewGameImage('');
-      setNewGameFactions('');
+      setGameFactionsList(['']);
       setEditingGame(null);
     } catch (err) { console.error(err); }
   };
@@ -314,7 +326,6 @@ export default function BoardGameTracker() {
     return found ? found.image : '';
   };
 
-  // Ottieni le fazioni del gioco selezionato
   const getSelectedGameFactions = () => {
     const found = games.find(g => g.name.toLowerCase() === newMatchGame.toLowerCase());
     return found && found.factions ? found.factions : [];
@@ -801,7 +812,7 @@ export default function BoardGameTracker() {
                           setEditingGame(null); 
                           setNewGameName(''); 
                           setNewGameImage(''); 
-                          setNewGameFactions('');
+                          setGameFactionsList(['']);
                           setShowNewGameModal(true); 
                         }}
                         className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
@@ -841,7 +852,7 @@ export default function BoardGameTracker() {
                                   setEditingGame(game); 
                                   setNewGameName(game.name); 
                                   setNewGameImage(game.image || ''); 
-                                  setNewGameFactions(game.factions ? game.factions.join(', ') : '');
+                                  setGameFactionsList(game.factions && game.factions.length > 0 ? game.factions : ['']);
                                   setShowNewGameModal(true); 
                                 }}
                                 className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/50 active:scale-95 transition-all"
@@ -864,13 +875,13 @@ export default function BoardGameTracker() {
       {/* MODALE AVVIA PARTITA */}
       {showNewMatchModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] transform transition-all">
-            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] transform transition-all my-auto">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50 shrink-0">
               <h3 className="font-bold text-sm sm:text-base text-white">Avvia Nuova Partita</h3>
               <button onClick={() => setShowNewMatchModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
             
-            <form onSubmit={handleStartMatch} className="p-5 overflow-y-auto space-y-3.5 flex-1">
+            <form onSubmit={handleStartMatch} className="p-5 overflow-y-auto space-y-4 flex-1">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Seleziona Gioco</label>
                 <select 
@@ -886,7 +897,7 @@ export default function BoardGameTracker() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
                   <input 
@@ -916,11 +927,11 @@ export default function BoardGameTracker() {
                   <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Partecipanti e Frazioni/Razze</label>
                   <button type="button" onClick={addPlayerRow} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi giocatore</button>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {matchPlayers.map((p, index) => {
                     const availableFactions = getSelectedGameFactions();
                     return (
-                      <div key={index} className="flex items-center gap-2 animate-in fade-in duration-200">
+                      <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/80">
                         <select 
                           required
                           value={p.name}
@@ -937,9 +948,9 @@ export default function BoardGameTracker() {
                           <select 
                             value={p.faction}
                             onChange={(e) => updatePlayerRow(index, 'faction', e.target.value)}
-                            className="w-32 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                            className="flex-1 sm:w-44 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                           >
-                            <option value="">Fazione...</option>
+                            <option value="">Seleziona fazione...</option>
                             {availableFactions.map((f, fIdx) => (
                               <option key={fIdx} value={f}>{f}</option>
                             ))}
@@ -950,13 +961,13 @@ export default function BoardGameTracker() {
                             placeholder="Fazione / Razza"
                             value={p.faction}
                             onChange={(e) => updatePlayerRow(index, 'faction', e.target.value)}
-                            className="w-32 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                            className="flex-1 sm:w-44 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
                           />
                         )}
 
                         {matchPlayers.length > 1 && (
-                          <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-1.5 active:scale-95 transition-all">
-                            <Trash2 size={15} />
+                          <button type="button" onClick={() => removePlayerRow(index)} className="text-red-400 hover:text-red-300 p-2 self-end sm:self-center active:scale-95 transition-all">
+                            <Trash2 size={16} />
                           </button>
                         )}
                       </div>
@@ -976,7 +987,7 @@ export default function BoardGameTracker() {
                 ></textarea>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2.5">
+              <div className="pt-2 flex justify-end gap-2.5 shrink-0">
                 <button type="button" onClick={() => setShowNewMatchModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
                 <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">Avvia Partita</button>
               </div>
@@ -988,8 +999,8 @@ export default function BoardGameTracker() {
       {/* MODALE TERMINA PARTITA IN CORSO */}
       {finishingMatch && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh] my-auto">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50 shrink-0">
               <h3 className="font-bold text-sm sm:text-base text-white">Termina: {finishingMatch.game}</h3>
               <button onClick={() => setFinishingMatch(null)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
@@ -1019,7 +1030,7 @@ export default function BoardGameTracker() {
                 ))}
               </div>
 
-              <div className="pt-2 flex justify-end gap-2.5">
+              <div className="pt-2 flex justify-end gap-2.5 shrink-0">
                 <button type="button" onClick={() => setFinishingMatch(null)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Annulla</button>
                 <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">Registra Punteggi</button>
               </div>
@@ -1031,7 +1042,7 @@ export default function BoardGameTracker() {
       {/* MODALE NUOVO / MODIFICA GIOCATORE FISSO */}
       {showNewPlayerModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl my-auto">
             <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
               <h3 className="font-bold text-sm sm:text-base text-white">{editingPlayer ? 'Modifica Giocatore' : 'Aggiungi Giocatore'}</h3>
               <button onClick={() => setShowNewPlayerModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
@@ -1070,16 +1081,16 @@ export default function BoardGameTracker() {
         </div>
       )}
 
-      {/* MODALE GIOCO / IMMAGINE / FAZIONI */}
+      {/* MODALE GIOCO / IMMAGINE / FAZIONI A SINGOLI CAMPI */}
       {showNewGameModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh] my-auto">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50 shrink-0">
               <h3 className="font-bold text-sm sm:text-base text-white">{editingGame ? 'Modifica Gioco' : 'Aggiungi Gioco'}</h3>
               <button onClick={() => setShowNewGameModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
             
-            <form onSubmit={handleSaveGame} className="p-5 space-y-3.5">
+            <form onSubmit={handleSaveGame} className="p-5 overflow-y-auto space-y-4 flex-1">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Gioco</label>
                 <input 
@@ -1104,17 +1115,31 @@ export default function BoardGameTracker() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Razze / Fazioni (separate da virgola)</label>
-                <input 
-                  type="text" 
-                  placeholder="Es. Umani, Elfi, Orchi, Nani"
-                  value={newGameFactions}
-                  onChange={(e) => setNewGameFactions(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
-                />
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Razze / Fazioni del gioco</label>
+                  <button type="button" onClick={addGameFactionField} className="text-xs text-indigo-400 hover:underline font-bold">+ Aggiungi fazione</button>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {gameFactionsList.map((faction, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input 
+                        type="text"
+                        placeholder="Es. Umani, Impero, ecc."
+                        value={faction}
+                        onChange={(e) => updateGameFactionField(idx, e.target.value)}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                      {gameFactionsList.length > 1 && (
+                        <button type="button" onClick={() => removeGameFactionField(idx)} className="text-red-400 hover:text-red-300 p-1.5 active:scale-95">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2.5">
+              <div className="pt-2 flex justify-end gap-2.5 shrink-0">
                 <button type="button" onClick={() => setShowNewGameModal(false)} className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 transition-all">Annulla</button>
                 <button type="submit" className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Salva</button>
               </div>
@@ -1126,7 +1151,7 @@ export default function BoardGameTracker() {
       {/* MODALE STAGIONE (Crea o Modifica) */}
       {showNewSeasonModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl my-auto">
             <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
               <h3 className="font-bold text-sm sm:text-base text-white">{editingSeason ? 'Modifica Stagione' : 'Nuova Stagione'}</h3>
               <button onClick={() => setShowNewSeasonModal(false)} className="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
