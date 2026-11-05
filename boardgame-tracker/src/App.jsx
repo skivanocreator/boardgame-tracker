@@ -4,7 +4,7 @@ import {
   getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, onSnapshot 
 } from 'firebase/firestore';
 import { 
-  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, AlertCircle, UserPlus, Menu, X, ChevronRight, ArrowLeft, Play, CheckCircle2, FileText 
+  Trophy, Plus, Users, Calendar, Clock, Gamepad2, Trash2, Edit2, AlertCircle, UserPlus, Menu, X, ChevronRight, ArrowLeft, Play, CheckCircle2, FileText, Filter 
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -32,6 +32,7 @@ export default function BoardGameTracker() {
   const [playersList, setPlayersList] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState('all');
+  const [cronologiaGameFilter, setCronologiaGameFilter] = useState('all');
   
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -229,7 +230,6 @@ export default function BoardGameTracker() {
       await updateDoc(doc(db, 'matches', editingNotesMatch.id), {
         notes: currentNotesValue
       });
-      // Aggiorna anche lo stato locale del dettaglio se aperto
       if (selectedMatchDetail && selectedMatchDetail.id === editingNotesMatch.id) {
         setSelectedMatchDetail({ ...selectedMatchDetail, notes: currentNotesValue });
       }
@@ -841,41 +841,72 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 3. CRONOLOGIA (CLICCABILE) */}
+                {/* 3. CRONOLOGIA (CON FILTRO PER GIOCO E ANTICPRIMA SENZA NOTE) */}
                 {activeTab === 'cronologia' && (
-                  <div className="space-y-3.5">
-                    <h2 className="text-lg font-bold text-white mb-2">Cronologia Tutte le Partite</h2>
-                    <p className="text-xs text-slate-400 -mt-2 mb-3">Clicca su una partita per vedere i dettagli completi</p>
-                    {matches.length === 0 ? (
-                      <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">Nessuna partita trovata.</div>
-                    ) : (
-                      matches.map(m => (
-                        <div 
-                          key={m.id} 
-                          onClick={() => setSelectedMatchDetail(m)}
-                          className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                      <div>
+                        <h2 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                          <Clock size={18} className="text-indigo-400" /> Cronologia Partite
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Clicca su una partita per vedere tutti i dettagli e le note</p>
+                      </div>
+                      <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 shadow-inner w-full sm:w-auto">
+                        <Filter size={15} className="text-indigo-400 shrink-0" />
+                        <select 
+                          value={cronologiaGameFilter} 
+                          onChange={(e) => setCronologiaGameFilter(e.target.value)}
+                          className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none text-white cursor-pointer w-full"
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2.5">
-                              <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-indigo-300 transition-colors">{m.game}</h3>
-                              <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                          <option value="all" className="bg-slate-900">🎮 Tutti i giochi</option>
+                          {games.map(g => (
+                            <option key={g.id} value={g.name} className="bg-slate-900">{g.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      {(() => {
+                        const displayMatches = cronologiaGameFilter === 'all' 
+                          ? matches 
+                          : matches.filter(m => m.game.toLowerCase() === cronologiaGameFilter.toLowerCase());
+
+                        if (displayMatches.length === 0) {
+                          return (
+                            <div className="bg-slate-900 border border-slate-800 p-10 text-center rounded-2xl text-slate-500 text-sm">
+                              Nessuna partita trovata con questo filtro.
                             </div>
-                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                              <Calendar size={12} /> {m.date}
-                            </p>
-                            <div className="flex flex-wrap gap-1.5 mt-2.5">
-                              {m.players?.map((p, i) => (
-                                <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
-                                  {p.isWinner && '👑'} {p.name} {p.faction && <span className="text-indigo-300">({p.faction})</span>}: <strong>{p.score}</strong> pt
-                                </span>
-                              ))}
+                          );
+                        }
+
+                        return displayMatches.map(m => (
+                          <div 
+                            key={m.id} 
+                            onClick={() => setSelectedMatchDetail(m)}
+                            className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 cursor-pointer transition-all group"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2.5">
+                                <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-indigo-300 transition-colors">{m.game}</h3>
+                                <span className="bg-indigo-500/10 text-indigo-300 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">{m.season}</span>
+                              </div>
+                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                                <Calendar size={12} /> {m.date}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                {m.players?.map((p, i) => (
+                                  <span key={i} className={`text-xs px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 ${p.isWinner ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
+                                    {p.isWinner && '👑'} {p.name} {p.faction && <span className="text-indigo-300">({p.faction})</span>}: <strong>{p.score}</strong> pt
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                            {m.notes && <p className="text-xs text-slate-400 mt-2 italic">Note: "{m.notes}"</p>}
+                            <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
                           </div>
-                          <ChevronRight size={18} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all self-end md:self-center" />
-                        </div>
-                      ))
-                    )}
+                        ));
+                      })()}
+                    </div>
                   </div>
                 )}
 
@@ -979,7 +1010,7 @@ export default function BoardGameTracker() {
                   </div>
                 )}
 
-                {/* 6. GIOCHI (CLICCABILE) */}
+                {/* 6. GIOCHI */}
                 {activeTab === 'giochi' && (
                   <div className="space-y-5">
                     <div className="flex justify-between items-center">
